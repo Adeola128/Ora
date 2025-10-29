@@ -1,0 +1,8 @@
+{
+  "name": "Copy of Copy of Copy of Copy 45of Oratora - AI Public Speaking ",
+  "description": "Oratora is an AI-powered public speaking coach that democratizes access to professional speaking training through personalized, context-aware feedback, real-time coaching, and immersive practice environments. This is the authentication step of the application.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}

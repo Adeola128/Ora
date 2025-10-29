@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M16 28C22.6274 28 28 22.6274 28 16C28 9.37258 22.6274 4 16 4' stroke='%2306f9e0' stroke-width='4' stroke-linecap='round' fill='none'/><path d='M16 24C19.9298 24 23.141 21.412 24 18' stroke='%2306f9e0' stroke-width='3' stroke-linecap='round' fill='none'/><path d='M16 20C17.5752 20 18.9664 19.1411 19.6085 18' stroke='%2306f9e0' stroke-width='2.5' stroke-linecap='round' fill='none'/></svg>" />
+    <title>Oratora - Speak Better. Sound Confident.</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;family=Poppins:wght@500;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500;700;800;900&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <script src="https://js.paystack.co/v1/inline.js"></script>
+    <script>
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                "primary": "#06f9e0",
+                "accent": "#FF6B6B",
+                "background-light": "#f5f8f8",
+                "background-dark": "#0f2321",
+                "card-light": "#FFFFFF",
+                "card-dark": "#1a3835",
+                "text-primary-light": "#2F4F4F",
+                "text-primary-dark": "#E0E0E0",
+                "text-secondary-light": "#5f8c87",
+                "text-secondary-dark": "#a0b5b3",
+                "border-light": "#F0F0F0",
+                "border-dark": "#4a5a58",
+                
+                // New colors for processing page
+                "muted_bg": "#f0f8ff",
+                "playful_green": "#6edb1f",
+                "mustard": "#ffc107",
+                "insight-card-bg": "#fefce8",
+              },
+              fontFamily: {
+                "display": ["Plus Jakarta Sans", "Inter", "sans-serif"],
+                "heading": ["Poppins", "sans-serif"]
+              },
+              borderRadius: {
+                "DEFAULT": "1rem",
+                "lg": "1.5rem",
+                "xl": "2rem",
+                "full": "9999px"
+              },
+              spacing: {
+                'path-segment-w': '1.5rem',
+                'path-segment-h': '0.75rem',
+              }
+            },
+          },
+        }
+    </script>
+    <style type="text/tailwindcss">
+        .material-symbols-outlined {
+          font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24
+        }
+        .path-segment {
+            transition: all 0.5s ease-in-out;
+            transform-origin: center;
+        }
+        .path-segment.active {
+            @apply bg-playful_green scale-110;box-shadow: 0 0 10px rgba(110, 219, 31, 0.6);
+        }
+        .path-segment.completed {
+            @apply bg-playful_green;
+        }
+        .insight-card {
+            transform: translateY(10px);
+            opacity: 0;
+            transition: all 0.5s ease-out;
+        }
+        .insight-card.active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .glass-card {
+            @apply bg-black/40 backdrop-blur-lg border border-white/10;
+        }
+        
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .animate-on-scroll.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .toast-container:hover .toast-progress-bar {
+            animation-play-state: paused;
+        }
+
+        @keyframes bob {
+          0%, 100% { transform: translateY(-10px); }
+          50% { transform: translateY(0); }
+        }
+        .animate-bob { animation: bob 4s ease-in-out infinite; }
+
+        @keyframes wave {
+          '0%, 100%' { transform: rotate(0deg); }
+          '25%' { transform: rotate(-20deg) scale(1.1); }
+          '75%' { transform: rotate(20deg) scale(1.1); }
+        }
+        .animate-wave { animation: wave 2.5s ease-in-out infinite; }
+
+        @keyframes levitate {
+           '0%, 100%' { transform: translateY(0); }
+           '50%' { transform: translateY(-10px); }
+        }
+        .animate-levitate { animation: levitate 3s ease-in-out infinite; }
+
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
+
+        @keyframes fade-in-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards; }
+        .animate-fade-in-up-small { animation: fade-in-up 0.3s ease-out forwards; }
+        
+        @keyframes slide-in-from-left { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .animate-slide-in-from-left { animation: slide-in-from-left 0.5s ease-out forwards; }
+        
+        @keyframes slide-in-from-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .animate-slide-in-from-right { animation: slide-in-from-right 0.5s ease-out forwards; }
+
+        @keyframes slide-out-to-right {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(20%); }
+        }
+        .animate-slide-out-to-right { animation: slide-out-to-right 0.4s ease-in forwards; }
+
+        @keyframes pulse-border {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(6, 249, 224, 0.4); }
+          50% { box-shadow: 0 0 0 4px rgba(6, 249, 224, 0); }
+        }
+        .animate-pulse-border { animation: pulse-border 2s infinite; }
+        
+        @keyframes pulse-gradient {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        .animate-pulse-gradient { animation: pulse-gradient 3s ease-out infinite; }
+        
+        @keyframes shrink-width {
+            from { width: 100%; } to { width: 0%; }
+        }
+        .toast-progress-bar {
+            animation: shrink-width var(--toast-duration, 5s) linear forwards;
+        }
+
+        @keyframes fill-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+        .animate-fill-bar { animation: fill-bar 1s ease-out forwards; transform-origin: left; }
+
+        /* Print-specific styles */
+        @media print {
+            body {
+                background-color: #fff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            .screen-only {
+                display: none !important;
+            }
+
+            .printable-area {
+                display: block !important;
+            }
+
+            @page {
+                size: A4;
+                margin: 1.5cm;
+            }
+            
+            .print-avoid-break { page-break-inside: avoid; }
+            .print-break-before { page-break-before: always; }
+            h1, h2, h3, h4, h5 { page-break-after: avoid; }
+        }
+
+        .printable-area {
+            display: none;
+        }
+    </style>
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "react/jsx-runtime": "https://esm.sh/react@18.2.0/jsx-runtime",
+    "react-transition-group": "https://esm.sh/react-transition-group@4.4.5",
+    "@google/genai": "https://esm.sh/@google/genai",
+    "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "nodemailer": "https://aistudiocdn.com/nodemailer@^7.0.10"
+  }
+}
+</script>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-text-primary-light dark:text-text-primary-dark">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>
