@@ -115,6 +115,7 @@ const App: React.FC = () => {
 
     // --- Data Fetching and Auth Listener ---
     useEffect(() => {
+        // A single, robust function to process a session, whether it's the initial one or from a state change.
         const processSession = async (session: Session | null) => {
             if (!session?.user) {
                 setUser(null);
@@ -127,46 +128,50 @@ const App: React.FC = () => {
             }
 
             try {
+                // The RPC is the preferred, efficient path.
                 const { data: rpcData, error: rpcError } = await supabase
                     .rpc('get_initial_user_data', { p_user_id: session.user.id });
                 
                 let initialData;
 
-                if (rpcError) {
-                    console.warn("RPC 'get_initial_user_data' failed, falling back to individual fetches. Please ensure the RPC is deployed.", rpcError);
-                    
-                    const [profileRes, subscriptionRes, historyRes, goalsRes, trackableGoalsRes] = await Promise.all([
-                        supabase.from('profiles').select('*').eq('id', session.user.id).single(),
+                if (!rpcError && rpcData?.profile) {
+                    // Happy path: RPC succeeded and returned a profile.
+                    initialData = rpcData;
+                } else {
+                    // Fallback path: RPC failed or (more likely) the user's profile wasn't ready yet (race condition).
+                    // We will now retry fetching the profile with a delay, but we will NOT attempt to create it from the client.
+                    if (rpcError) console.warn("RPC failed, falling back to individual fetches.", rpcError);
+
+                    let profileData: any = null;
+                    // Retry fetching the profile up to 5 times with increasing delay.
+                    // This gives the database trigger time to run after sign-up.
+                    for (let i = 0; i < 5; i++) {
+                        const { data, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+                        if (data) {
+                            profileData = data;
+                            break; // Success!
+                        }
+                        if (error && error.code !== 'PGRST116') { // 'PGRST116' is "No rows found"
+                            throw error; // A different, unexpected DB error occurred.
+                        }
+                        // Wait and retry
+                        await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)));
+                    }
+
+                    if (!profileData) {
+                        // If the profile is still not found after multiple retries, it's a critical issue.
+                        throw new Error("User profile could not be found after several attempts. The user record might be incomplete or the creation trigger may have failed.");
+                    }
+
+                    // Since RPC failed, we fetch the rest of the data individually.
+                    const [subscriptionRes, historyRes, goalsRes, trackableGoalsRes] = await Promise.all([
                         supabase.from('subscriptions').select('*').eq('id', session.user.id).single(),
                         supabase.from('analysis_reports').select('report').eq('user_id', session.user.id).order('created_at', { ascending: false }),
                         supabase.from('user_goals').select('goals').eq('user_id', session.user.id).single(),
                         supabase.from('trackable_goals').select('*').eq('user_id', session.user.id).order('created_at')
                     ]);
-
-                    let profileData = profileRes.data;
-
-                    if (profileRes.error) {
-                         if (profileRes.error.code === 'PGRST116') { // "No rows found"
-                            console.warn("Profile not found for authenticated user. Attempting to create one to prevent loop.");
-                            const { data: newProfile, error: insertError } = await supabase
-                                .from('profiles')
-                                .insert({
-                                    id: session.user.id,
-                                    name: session.user.user_metadata?.full_name || session.user.email,
-                                    avatar_url: session.user.user_metadata?.avatar_url,
-                                    onboarding_completed: false,
-                                })
-                                .select()
-                                .single();
-                            if (insertError) {
-                                throw new Error(`Failed to self-heal and create profile: ${insertError.message}`);
-                            }
-                            profileData = newProfile;
-                        } else {
-                            throw profileRes.error;
-                        }
-                    }
-
+                    
+                    // Error handling for individual fetches (log but don't fail the whole process if possible)
                     if (subscriptionRes.error && subscriptionRes.error.code !== 'PGRST116') console.error("Error fetching subscription:", subscriptionRes.error);
                     if (historyRes.error) console.error("Error fetching history:", historyRes.error);
                     if (goalsRes.error && goalsRes.error.code !== 'PGRST116') console.error("Error fetching user goals:", goalsRes.error);
@@ -179,15 +184,9 @@ const App: React.FC = () => {
                         user_goals: goalsRes.data ? (goalsRes.data as any).goals : null,
                         trackable_goals: trackableGoalsRes.data,
                     };
-
-                } else {
-                     initialData = rpcData;
                 }
                 
-                if (!initialData || !initialData.profile) {
-                    throw new Error("User authenticated but profile data could not be found or created.");
-                }
-                
+                // Now that we have `initialData` from either RPC or fallback, process it.
                 const camelCaseData = toCamelCase<any>(initialData);
 
                 const userData: User = {
@@ -218,20 +217,38 @@ const App: React.FC = () => {
             }
         };
     
+        // Load theme preferences
         const savedTheme = localStorage.getItem('theme') || 'light';
         if (savedTheme === 'dark') document.documentElement.classList.add('dark');
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        // This function runs once to handle the initial authentication check.
+        const initializeAndSubscribe = async () => {
+            // First, get the current session to immediately determine auth state on load.
+            const { data: { session } } = await supabase.auth.getSession();
             await processSession(session);
             
-            // This ensures we only set loading to false on the very first auth event.
-            if (!initialAuthCheckCompleted.current) {
-                setIsLoading(false);
-                initialAuthCheckCompleted.current = true;
-            }
-        });
+            // This is the key fix: guarantee that the loading state is turned off after the initial check.
+            setIsLoading(false);
+            initialAuthCheckCompleted.current = true;
 
-        return () => subscription.unsubscribe();
+            // Now, set up the listener for any subsequent changes (e.g., user logs in/out in another tab).
+            const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+                // We only need to react to explicit sign-in/out events.
+                // The initial 'INITIAL_SESSION' event is ignored because we already handled it with getSession().
+                if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+                    await processSession(session);
+                }
+            });
+
+            return subscription;
+        };
+        
+        const subscriptionPromise = initializeAndSubscribe();
+
+        // Return a cleanup function to unsubscribe when the component unmounts.
+        return () => {
+            subscriptionPromise.then(subscription => subscription?.unsubscribe());
+        };
     }, []); // Empty dependency array ensures this runs only once on mount.
 
     const isConfigured = isGeminiConfigured;

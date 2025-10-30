@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { User, AnalysisReport, UserSubscription } from '../types';
 import { calculateStreak, calculateLevelAndXP, calculateAchievements } from './lib/gamification';
@@ -77,29 +78,112 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         };
     }, []);
 
-    const TrialBanner = () => {
-        if (!subscription || subscription.status !== 'trialing' || !subscription.trialEndsAt) {
+    const SubscriptionStatusBanner = () => {
+        const [timeLeft, setTimeLeft] = useState('');
+        const [isWarning, setIsWarning] = useState(false);
+
+        useEffect(() => {
+            if (!subscription) {
+                setTimeLeft('');
+                return;
+            }
+
+            const getBannerMessage = () => {
+                const now = new Date();
+                
+                if (subscription.status === 'trialing' && subscription.trialEndsAt) {
+                    const endDate = new Date(subscription.trialEndsAt);
+                    const diff = endDate.getTime() - now.getTime();
+
+                    if (diff <= 0) {
+                        setIsWarning(true);
+                        return 'Your Premium trial has expired.';
+                    }
+
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+                    setIsWarning(days < 1); // Set warning if less than a day is left
+
+                    if (days > 0) {
+                        return `Your Premium trial ends in ${days} ${days === 1 ? 'day' : 'days'} and ${hours} ${hours === 1 ? 'hour' : 'hours'}.`;
+                    }
+                    if (hours > 0) {
+                        return `Your Premium trial ends in ${hours} ${hours === 1 ? 'hour' : 'hours'} and ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}.`;
+                    }
+                    if (minutes > 0) {
+                        return `Your Premium trial ends in ${minutes} ${minutes === 1 ? 'minute' : 'minutes'} and ${seconds} ${seconds === 1 ? 'second' : 'seconds'}.`;
+                    }
+                    return `Your Premium trial ends in ${seconds} ${seconds === 1 ? 'second' : 'seconds'}.`;
+                } 
+                else if (subscription.plan !== 'free' && subscription.status === 'active' && subscription.periodEndsAt) {
+                    const endDate = new Date(subscription.periodEndsAt);
+                    const diff = endDate.getTime() - now.getTime();
+
+                    if (diff > 0) {
+                        const daysLeft = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                        if (daysLeft <= 7) {
+                           setIsWarning(daysLeft <= 3);
+                           return `Your ${subscription.plan} plan renews in ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}.`;
+                        }
+                    } else {
+                        setIsWarning(true);
+                        return `Your ${subscription.plan} plan may have expired.`;
+                    }
+                }
+                else if (subscription.status === 'past_due') {
+                    setIsWarning(true);
+                    return 'Your payment is past due. Please update your payment method.';
+                }
+                
+                return '';
+            };
+
+            const initialMessage = getBannerMessage();
+            if (initialMessage) {
+                setTimeLeft(initialMessage);
+            } else {
+                setTimeLeft('');
+                return;
+            }
+            
+            // Update every second for a live countdown
+            const timer = setInterval(() => {
+                const newMessage = getBannerMessage();
+                if (newMessage) {
+                    setTimeLeft(newMessage);
+                } else {
+                    setTimeLeft('');
+                    clearInterval(timer);
+                }
+            }, 1000);
+
+            return () => clearInterval(timer);
+        }, [subscription]);
+
+        if (!timeLeft) {
             return null;
         }
 
-        const endDate = new Date(subscription.trialEndsAt);
-        const now = new Date();
-        const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-        if (daysLeft < 0) return null;
+        const bannerClass = isWarning ? 'bg-mustard text-black' : 'bg-primary/20 text-primary dark:text-primary';
+        const buttonClass = isWarning ? 'hover:text-slate-700' : 'hover:text-teal-700 dark:hover:text-teal-200';
 
         return (
-            <div className="bg-mustard text-center text-sm font-semibold text-black py-1.5 px-4">
-                You have {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left on your Premium trial.
-                <button onClick={onNavigateToBilling} className="ml-2 font-bold underline hover:text-white">Upgrade Now</button>
+            <div className={`${bannerClass} text-center text-sm font-semibold py-1.5 px-4 transition-colors duration-300`}>
+                {timeLeft}
+                <button onClick={onNavigateToBilling} className={`ml-2 font-bold underline ${buttonClass}`}>
+                    {subscription?.status === 'trialing' || subscription?.status === 'past_due' ? 'Upgrade Now' : 'Manage Subscription'}
+                </button>
             </div>
         );
-    }
+    };
 
     return (
         <div className="group/design-root flex min-h-screen w-full flex-col">
             <header className="sticky top-0 z-30 w-full border-b border-border-light dark:border-border-dark bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
-                <TrialBanner />
+                <SubscriptionStatusBanner />
                 <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-10">
                     <a href="#" className="flex items-center gap-3" aria-label="Oratora Home">
                         <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">

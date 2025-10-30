@@ -47,7 +47,7 @@ const ContactPage: React.FC<ContactPageProps> = ({ onBack }) => {
                                 <div>
                                     <h3 className="text-lg font-semibold text-text-light dark:text-text-dark">Email Us</h3>
                                     <p className="text-text-muted-light dark:text-text-muted-dark">Our team is here to help. Drop us a line!</p>
-                                    <a href="mailto:support@oratora.ai" className="text-primary font-semibold hover:underline mt-1 block">support@oratora.ai</a>
+                                    <a href="mailto:abdulrahmanadebambo@gmail.com" className="text-primary font-semibold hover:underline mt-1 block">abdulrahmanadebambo@gmail.com</a>
                                 </div>
                             </div>
                             <div className="flex items-start gap-4">

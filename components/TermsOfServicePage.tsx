@@ -55,7 +55,7 @@ const TermsOfServicePage: React.FC<TermsOfServicePageProps> = ({ onBack }) => {
                         <p>We reserve the right to modify these Terms at any time. We will notify you of any changes by posting the new Terms on this page. Your continued use of the Service after any such changes constitutes your acceptance of the new Terms.</p>
 
                         <h3>11. Contact Us</h3>
-                        <p>If you have any questions about these Terms, please contact us at support@oratora.ai.</p>
+                        <p>If you have any questions about these Terms, please contact us at abdulrahmanadebambo@gmail.com.</p>
                     </div>
                 </div>
             </div>
