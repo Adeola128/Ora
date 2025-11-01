@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, AnalysisReport, UserSubscription } from '../types';
 import { calculateStreak, calculateLevelAndXP, calculateAchievements } from './lib/gamification';
 
-type ActivePage = 'dashboard' | 'history' | 'goals' | 'progress' | 'resources' | 'profile' | 'settings' | 'components' | 'billing';
+type ActivePage = 'dashboard' | 'history' | 'goals' | 'progress' | 'resources' | 'profile' | 'settings' | 'components' | 'billing' | 'referral';
 
 interface MainLayoutProps {
     user: User | null;
@@ -20,6 +20,7 @@ interface MainLayoutProps {
     onNavigateToProfile: () => void;
     onNavigateToSettings: () => void;
     onNavigateToBilling: () => void;
+    onNavigateToReferral: () => void;
     onNavigateToTermsOfService: () => void;
     onNavigateToPrivacyPolicy: () => void;
     onNavigateToSecurity: () => void;
@@ -42,6 +43,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     onNavigateToProfile,
     onNavigateToSettings,
     onNavigateToBilling,
+    onNavigateToReferral,
     onNavigateToTermsOfService,
     onNavigateToPrivacyPolicy,
     onNavigateToSecurity,
@@ -227,6 +229,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                                         <a onClick={() => { onNavigateToBilling(); setProfileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer">
                                             <span className="material-symbols-outlined text-base">credit_card</span> Billing
                                         </a>
+                                        <a onClick={() => { onNavigateToReferral(); setProfileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer">
+                                            <span className="material-symbols-outlined text-base">redeem</span> Refer & Earn
+                                        </a>
                                         <a onClick={() => { onNavigateToSettings(); setProfileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer">
                                             <span className="material-symbols-outlined text-base">settings</span> Settings
                                         </a>
@@ -276,6 +281,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                                 </a>
                                  <a onClick={() => { onNavigateToBilling(); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer rounded-lg">
                                     <span className="material-symbols-outlined text-base">credit_card</span> Billing
+                                </a>
+                                <a onClick={() => { onNavigateToReferral(); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer rounded-lg">
+                                    <span className="material-symbols-outlined text-base">redeem</span> Refer & Earn
                                 </a>
                                 <a onClick={() => { onNavigateToSettings(); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer rounded-lg">
                                     <span className="material-symbols-outlined text-base">settings</span> Settings

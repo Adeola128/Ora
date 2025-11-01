@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TrackableGoal, AnalysisReport } from '../types';
 import GoalModal from './GoalModal';
 
+/*
 interface GoalCardProps {
     goal: TrackableGoal;
     onEdit: (goal: TrackableGoal) => void;
@@ -58,6 +59,7 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onIncrementProgress }
         </div>
     );
 };
+*/
 
 interface GoalsPageProps {
     goals: TrackableGoal[];
@@ -66,6 +68,8 @@ interface GoalsPageProps {
 }
 
 const GoalsPage: React.FC<GoalsPageProps> = ({ goals, onUpdateGoals, history }) => {
+    /*
+    // Original implementation is preserved here for future development.
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingGoal, setEditingGoal] = useState<TrackableGoal | null>(null);
 
@@ -180,6 +184,15 @@ const GoalsPage: React.FC<GoalsPageProps> = ({ goals, onUpdateGoals, history }) 
                     history={history}
                 />
             )}
+        </div>
+    );
+    */
+
+    return (
+        <div className="flex flex-col items-center justify-center h-full text-center p-8 animate-fade-in min-h-[50vh]">
+            <span className="material-symbols-outlined text-6xl text-primary mb-4">construction</span>
+            <h1 className="text-3xl font-bold text-text-light dark:text-text-dark">Coming soon.</h1>
+            <p className="mt-2 text-text-muted-light dark:text-text-muted-dark">Under development: "Comment soon."</p>
         </div>
     );
 };

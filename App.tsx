@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase, isGeminiConfigured, toCamelCase, toSnakeCase } from './lib/supabaseClient';
@@ -38,6 +39,7 @@ import PaymentSuccessPage from './components/PaymentSuccessPage';
 import PaymentFailedPage from './components/PaymentFailedPage';
 import ErrorPage from './components/ErrorPage';
 import SupportButton from './components/SupportButton';
+import ReferralPage from './components/ReferralPage';
 
 
 type Page = 
@@ -56,6 +58,7 @@ type Page =
     | 'settings'
     | 'components'
     | 'billing'
+    | 'referral'
     | 'termsOfService'
     | 'privacyPolicy'
     | 'security'
@@ -115,6 +118,19 @@ const App: React.FC = () => {
 
     // --- Data Fetching and Auth Listener ---
     useEffect(() => {
+        // Handle referral codes on initial load
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCode = urlParams.get('ref');
+            if (refCode) {
+                localStorage.setItem('oratora_ref_code', refCode);
+                // Clean the URL so the ref code isn't visible after load
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        } catch (e) {
+            console.warn("Could not process referral URL parameter.", e);
+        }
+
         // A single, robust function to process a session, whether it's the initial one or from a state change.
         const processSession = async (session: Session | null) => {
             if (!session?.user) {
@@ -352,6 +368,7 @@ const App: React.FC = () => {
     const handleTrackableGoalsUpdate = useCallback(async (newGoals: TrackableGoal[]) => {
         if (!user) return;
     
+        // 1. Fetch current DB state to determine deletions
         const { data: currentGoalsData, error: fetchError } = await supabase
             .from('trackable_goals')
             .select('id')
@@ -362,52 +379,62 @@ const App: React.FC = () => {
             return;
         }
     
-        const currentGoals = toCamelCase<TrackableGoal[]>(currentGoalsData || []);
-        const currentGoalIds = new Set(currentGoals.map(g => g.id as number));
+        // 2. Calculate which goals to delete
+        const currentGoalIds = new Set((currentGoalsData || []).map(g => g.id));
         const newGoalIds = new Set(newGoals.map(g => g.id).filter(id => typeof id === 'number'));
         const deletedIds = [...currentGoalIds].filter(id => !newGoalIds.has(id));
     
-        const upsertableGoals = newGoals.map(goal => {
-            const isNewGoal = typeof goal.id !== 'number';
-            // Create a copy to avoid mutating state, and add the user_id
-            const goalData: Partial<TrackableGoal> & { userId?: string } = { ...goal, userId: user.id };
-
-            if (isNewGoal) {
-                // For new goals, we must NOT include the `id` property at all.
-                // The database will generate it, and our temporary string ID must be removed.
-                delete goalData.id;
+        // 3. Separate new goals (to insert) from existing goals (to update)
+        const goalsToInsert: any[] = [];
+        const goalsToUpdate: any[] = [];
+    
+        newGoals.forEach(goal => {
+            const { id, ...restOfGoal } = goal;
+            const goalPayload = { ...restOfGoal, userId: user.id };
+            if (typeof id === 'number') {
+                goalsToUpdate.push({ id, ...goalPayload });
+            } else {
+                goalsToInsert.push(goalPayload); // New goals have temp string IDs that are stripped
             }
-            
-            return goalData;
         });
-        
+    
+        const errors: string[] = [];
+    
+        // 4. Perform DB operations in parallel for efficiency
+        const promises = [];
         if (deletedIds.length > 0) {
-            const { error: deleteError } = await supabase
-                .from('trackable_goals')
-                .delete()
-                .in('id', deletedIds);
-    
-            if (deleteError) {
-                setToast({ message: `Failed to delete old goals: ${deleteError.message}`, type: 'error' });
-                return;
-            }
+            promises.push(supabase.from('trackable_goals').delete().in('id', deletedIds));
         }
+        if (goalsToInsert.length > 0) {
+            promises.push(supabase.from('trackable_goals').insert(toSnakeCase(goalsToInsert)));
+        }
+        if (goalsToUpdate.length > 0) {
+            promises.push(supabase.from('trackable_goals').upsert(toSnakeCase(goalsToUpdate)));
+        }
+        
+        const results = await Promise.all(promises);
+        results.forEach(res => {
+            if (res.error) errors.push(res.error.message);
+        });
     
-        if (upsertableGoals.length > 0) {
-            const { data, error: upsertError } = await supabase
-                .from('trackable_goals')
-                .upsert(toSnakeCase(upsertableGoals))
-                .select();
+        // 5. Re-fetch all goals from DB to ensure UI is perfectly in sync with the source of truth
+        const { data: finalGoalsData, error: finalFetchError } = await supabase
+            .from('trackable_goals')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at');
     
-            if (upsertError) {
-                setToast({ message: `Failed to update goals: ${upsertError.message}`, type: 'error' });
-            } else if (data) {
-                setTrackableGoals(toCamelCase<TrackableGoal[]>(data));
-                setToast({ message: "Your goals have been updated!", type: 'success' });
-            }
+        // 6. Report final status to user and update local state
+        if (finalFetchError) {
+            setToast({ message: `Goals updated, but failed to refresh view: ${finalFetchError.message}`, type: 'error' });
+        } else if (errors.length > 0) {
+            setToast({ message: `Some errors occurred: ${errors.join(', ')}`, type: 'error' });
         } else {
-            setTrackableGoals([]);
             setToast({ message: "Your goals have been updated!", type: 'success' });
+        }
+        
+        if (finalGoalsData) {
+            setTrackableGoals(toCamelCase<TrackableGoal[]>(finalGoalsData));
         }
     }, [user, setToast]);
 
@@ -508,17 +535,35 @@ const App: React.FC = () => {
     
         try {
             const { updatedGoals, newlyCompleted } = processGoalsWithNewReport(trackableGoals, report);
-            if (JSON.stringify(updatedGoals) !== JSON.stringify(trackableGoals)) {
-                setTrackableGoals(updatedGoals);
-                await handleTrackableGoalsUpdate(updatedGoals);
-                
-                newlyCompleted.forEach(async (goal) => {
-                    setToast({ message: `Goal Completed: ${goal.title}!`, type: 'success' });
-                    if (user) {
-                        const emailContent = generateGoalCompletionEmail(user, goal);
-                        await sendEmailNotification({ to: user.email, subject: emailContent.subject, html: emailContent.html });
-                    }
-                });
+            
+            // This `try...catch` block specifically handles errors that might occur during goal updates,
+            // which could be caused by `JSON.stringify` on complex objects or other processing steps.
+            // By isolating this, we prevent a goal-update failure from stopping the entire analysis completion flow.
+            try {
+                if (JSON.stringify(updatedGoals) !== JSON.stringify(trackableGoals)) {
+                    // We call the main update handler which will persist changes to the DB
+                    await handleTrackableGoalsUpdate(updatedGoals); 
+                    setTrackableGoals(updatedGoals); // Also update local state immediately
+                    
+                    newlyCompleted.forEach(async (goal) => {
+                        setToast({ message: `Goal Completed: ${goal.title}!`, type: 'success' });
+                        if (user) {
+                            const emailContent = generateGoalCompletionEmail(user, goal);
+                            await sendEmailNotification({ to: user.email, subject: emailContent.subject, html: emailContent.html });
+                        }
+                    });
+                }
+            } catch (e: unknown) {
+                console.error("Error processing goals after analysis:", e);
+                let message = "Could not update your goal progress.";
+                if (e instanceof Error) {
+                    message = `Error updating goals: ${e.message}`;
+                } else if (typeof e === 'string') {
+                    message = `Error updating goals: ${e}`;
+                } else if (e && typeof e === 'object' && 'message' in e && typeof (e as { message: unknown }).message === 'string') {
+                    message = `Error updating goals: ${(e as { message: string }).message}`;
+                }
+                setToast({ message, type: 'error' });
             }
 
             const { error } = await supabase.from('analysis_reports').insert(toSnakeCase({ userId: user.id, report: report }));
@@ -546,7 +591,13 @@ const App: React.FC = () => {
             }
         } catch (e) {
             console.error("Error during analysis completion handling:", e);
-            setToast({ message: "An unexpected error occurred while processing your results.", type: 'error' });
+            let message = "An unexpected error occurred while processing your results.";
+            if (e instanceof Error) {
+                message = e.message;
+            } else if (typeof e === 'string') {
+                message = e;
+            }
+            setToast({ message, type: 'error' });
             setAnalysisResult(report);
             setLastSessionGains(null);
         } finally {
@@ -557,103 +608,102 @@ const App: React.FC = () => {
     const handleAnalysisError = (error: string) => setAnalysisError(error);
     const handleEndLiveSession = (summary: { duration: number; feedback: string[]; fillerWords: Map<string, number>; avgWpm: number; }) => {
         setLiveSessionSummary(summary);
+        setPage('livePracticeSession'); // stay on this page to show summary
     };
-    const handleAnalyzeLiveSession = (audio: Blob, context: AnalysisContext) => { 
-        setAnalysisContext(context); 
-        handleAnalysisStart(audio); 
+    
+    const handleAnalyzeLiveRecording = (audio: Blob, context: AnalysisContext) => {
+        setAnalysisContext(context);
+        handleAnalysisStart(audio);
     };
 
-    if (isLoading) {
-        return (
-            <div className="flex min-h-screen items-center justify-center bg-background-light dark:bg-background-dark">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
-            </div>
-        )
+    const handleViewReport = (report: AnalysisReport) => {
+        setAnalysisResult(report);
+        setMediaForAnalysis(null); // Clear media as we don't have it for old reports
+        setLastSessionGains(null); // No new gains for viewing old reports
+        setPage('analysisResult');
     }
 
-    const mainLayoutPages: Page[] = ['dashboard', 'history', 'goals', 'progress', 'resources', 'profile', 'settings', 'components', 'billing', 'termsOfService', 'privacyPolicy', 'security', 'contact', 'career', 'resourceArticle'];
+    const navigateTo = (targetPage: Page) => setPage(targetPage);
+    
+    const mainLayoutPages: Page[] = ['dashboard', 'history', 'goals', 'progress', 'resources', 'profile', 'settings', 'components', 'billing', 'referral'];
 
     const renderPage = () => {
-        if (!user) { // Unauthenticated users
-            switch(page) {
-                case 'login': return <LoginPage onNavigateToSignUp={() => setPage('signup')} onNavigateToForgotPassword={() => setPage('forgotPassword')} />;
-                case 'signup': return <SignUpPage onNavigateToLogin={() => setPage('login')} />;
-                case 'forgotPassword': return <ForgotPasswordPage onNavigateToLogin={() => setPage('login')} setToast={setToast} />;
-                case 'error': return <ErrorPage title={appError?.title} message={appError?.message} onRetry={handleLogout} retryText="Back to Login" />;
-                default: return <LandingPage onNavigateToLogin={() => setPage('login')} onNavigateToSignUp={() => setPage('signup')} onNavigateToTermsOfService={() => setPage('termsOfService')} onNavigateToPrivacyPolicy={() => setPage('privacyPolicy')} onNavigateToSecurity={() => setPage('security')} onNavigateToContact={() => setPage('contact')} onNavigateToCareer={() => setPage('career')} />;
-            }
-        }
-
-        if (user && !user.onboardingCompleted && page !== 'onboarding' && page !== 'processing' && page !== 'analysisResult') {
-             return <OnboardingFlow user={user} onOnboardingComplete={handleOnboardingComplete} />;
-        }
-        
-        if (page === 'onboarding') {
-             return <OnboardingFlow user={user} onOnboardingComplete={handleOnboardingComplete} />;
-        }
-        
-        if (mainLayoutPages.includes(page) || (page === 'error' && user)) {
-            return (
-                 <MainLayout
-                    user={user} history={analysisHistory} subscription={userSubscription} activePage={page as any} onLogout={handleLogout}
-                    onNavigateToDashboard={() => setPage('dashboard')} onNavigateToHistory={() => setPage('history')}
-                    onNavigateToGoals={() => setPage('goals')} onNavigateToProgress={() => setPage('progress')}
-                    onNavigateToResources={() => setPage('resources')} onNavigateToProfile={() => setPage('profile')}
-                    onNavigateToSettings={() => setPage('settings')} onNavigateToBilling={() => setPage('billing')}
-                    onNavigateToTermsOfService={() => setPage('termsOfService')} onNavigateToPrivacyPolicy={() => setPage('privacyPolicy')}
-                    onNavigateToSecurity={() => setPage('security')} onNavigateToContact={() => setPage('contact')}
-                    onNavigateToCareer={() => setPage('career')}
-                 >
-                    {page === 'error' && <ErrorPage title={appError?.title} message={appError?.message} onRetry={handleLogout} retryText="Logout & Start Over" />}
-                    {page === 'dashboard' && <Dashboard user={user} history={analysisHistory} userGoals={userGoals} trackableGoals={trackableGoals} subscription={userSubscription} onViewReport={(report) => { setAnalysisResult(report); setPage('analysisResult'); }} onNavigateToNewAnalysis={() => setPage('contextSelection')} onNavigateToLivePractice={(topic) => { setInitialLiveTopic(topic || ''); setPage('livePracticeSetup'); }} onNavigateToGoals={() => setPage('goals')} onNavigateToBilling={() => setPage('billing')} setToast={setToast} />}
-                    {page === 'history' && <HistoryPage history={analysisHistory} onViewReport={(report) => { setAnalysisResult(report); setPage('analysisResult'); }} onNavigateToNewAnalysis={() => setPage('contextSelection')} />}
-                    {page === 'goals' && <GoalsPage goals={trackableGoals} onUpdateGoals={handleTrackableGoalsUpdate} history={analysisHistory} />}
-                    {page === 'progress' && <ProgressPage user={user} history={analysisHistory} userGoals={userGoals} onNavigateToGoals={() => setPage('goals')} onViewReport={(report) => { setAnalysisResult(report); setPage('analysisResult'); }} onNavigateToNewAnalysis={() => setPage('contextSelection')} />}
-                    {page === 'resources' && <ResourcesPage onNavigateToResource={(id) => { setSelectedResource(id); setPage('resourceArticle'); }} />}
-                    {page === 'resourceArticle' && <ResourceArticlePage articleId={selectedResource} onBack={() => setPage('resources')} />}
-                    {page === 'profile' && <ProfilePage user={user} onUpdateUser={handleUserUpdate} />}
-                    {page === 'settings' && <SettingsPage user={user} history={analysisHistory} setToast={setToast} />}
-                    {page === 'components' && <ComponentsPage />}
-                    {page === 'billing' && <BillingPage user={user} subscription={userSubscription} onSubscriptionUpdate={handleSubscriptionUpdate} onNavigateToPaymentSuccess={(ref, plan, amount) => { setPaymentInfo({reference: ref, plan, amount }); setPage('paymentSuccess'); }} onNavigateToPaymentFailed={() => setPage('paymentFailed')} onBackToDashboard={() => setPage('dashboard')} setToast={setToast} />}
-                    {page === 'termsOfService' && <TermsOfServicePage onBack={() => setPage('dashboard')} />}
-                    {page === 'privacyPolicy' && <PrivacyPolicyPage onBack={() => setPage('dashboard')} />}
-                    {page === 'security' && <SecurityPage onBack={() => setPage('dashboard')} />}
-                    {page === 'contact' && <ContactPage onBack={() => setPage('dashboard')} />}
-                    {page === 'career' && <CareerPage onBack={() => setPage('dashboard')} />}
-                </MainLayout>
-            )
-        }
-        
         switch (page) {
-            case 'newAnalysis':
-            case 'contextSelection':
-                 return <ContextSelectionPage onBackToDashboard={() => setPage('dashboard')} onContextSelected={handleContextSelected} />;
-            case 'upload':
-                return <UploadPage context={analysisContext} onBack={() => setPage('contextSelection')} onAnalysisStart={handleAnalysisStart} onNavigateToLivePractice={() => setPage('livePracticeSetup')} />;
-            case 'processing':
-                return <ProcessingPage media={mediaForAnalysis} context={analysisContext} history={analysisHistory} onAnalysisComplete={handleAnalysisComplete} onAnalysisError={handleAnalysisError} onRetry={() => handleAnalysisStart(mediaForAnalysis!)} onBackToUpload={() => setPage('upload')} error={analysisError} />;
-            case 'analysisResult':
-                return <AnalysisResultPage user={user} report={analysisResult} media={mediaForAnalysis} sessionGains={lastSessionGains} onBackToDashboard={() => setPage('dashboard')} onNavigateToNewAnalysis={() => setPage('contextSelection')} onNavigateToLivePracticeSetup={() => setPage('livePracticeSetup')} onNavigateToProgress={() => setPage('progress')} />;
-            case 'livePractice':
-            case 'livePracticeSetup':
-                return <LivePracticeSetupPage onBackToDashboard={() => setPage('dashboard')} onStartSession={(topic) => { setLivePracticeTopic(topic); setLiveSessionSummary(null); setPage('livePracticeSession'); }} initialTopic={initialLiveTopic} />;
-            case 'livePracticeSession':
-                return <LivePracticeSessionPage topic={livePracticeTopic} onEndSession={handleEndLiveSession} onBackToDashboard={() => setPage('dashboard')} onAnalyzeLiveSession={handleAnalyzeLiveSession} />;
-            case 'paymentSuccess':
-                return <PaymentSuccessPage onVerifyPayment={handlePaymentVerification} />;
-            case 'paymentFailed':
-                return <PaymentFailedPage onRetry={() => setPage('billing')} onBackToDashboard={() => setPage('dashboard')} />;
-            default:
-                return <Dashboard user={user} history={analysisHistory} userGoals={userGoals} trackableGoals={trackableGoals} subscription={userSubscription} onViewReport={(report) => { setAnalysisResult(report); setPage('analysisResult'); }} onNavigateToNewAnalysis={() => setPage('contextSelection')} onNavigateToLivePractice={(topic) => { setInitialLiveTopic(topic || ''); setPage('livePracticeSetup'); }} onNavigateToGoals={() => setPage('goals')} onNavigateToBilling={() => setPage('billing')} setToast={setToast} />;
+            case 'landing': return <LandingPage onNavigateToLogin={() => navigateTo('login')} onNavigateToSignUp={() => navigateTo('signup')} onNavigateToTermsOfService={() => navigateTo('termsOfService')} onNavigateToPrivacyPolicy={() => navigateTo('privacyPolicy')} onNavigateToSecurity={() => navigateTo('security')} onNavigateToContact={() => navigateTo('contact')} onNavigateToCareer={() => navigateTo('career')} />;
+            case 'login': return <LoginPage onNavigateToSignUp={() => navigateTo('signup')} onNavigateToForgotPassword={() => navigateTo('forgotPassword')} />;
+            case 'signup': return <SignUpPage onNavigateToLogin={() => navigateTo('login')} />;
+            case 'forgotPassword': return <ForgotPasswordPage onNavigateToLogin={() => navigateTo('login')} setToast={setToast} />;
+            case 'onboarding': return <OnboardingFlow user={user} onOnboardingComplete={handleOnboardingComplete} />;
+            case 'newAnalysis': return <ContextSelectionPage onBackToDashboard={() => navigateTo('dashboard')} onContextSelected={handleContextSelected} />;
+            case 'livePractice': return <LivePracticeSetupPage onBackToDashboard={() => navigateTo('dashboard')} onStartSession={(topic) => { setLivePracticeTopic(topic); navigateTo('livePracticeSession'); }} />;
+            case 'contextSelection': return <ContextSelectionPage onBackToDashboard={() => navigateTo('dashboard')} onContextSelected={handleContextSelected} />;
+            case 'upload': return <UploadPage context={analysisContext} onBack={() => navigateTo('contextSelection')} onAnalysisStart={handleAnalysisStart} onNavigateToLivePractice={() => navigateTo('livePractice')} />;
+            case 'processing': return <ProcessingPage media={mediaForAnalysis} context={analysisContext} history={analysisHistory} onAnalysisComplete={handleAnalysisComplete} onAnalysisError={handleAnalysisError} error={analysisError} onRetry={() => handleAnalysisStart(mediaForAnalysis!)} onBackToUpload={() => navigateTo('upload')} />;
+            case 'analysisResult': return <AnalysisResultPage user={user} report={analysisResult} media={mediaForAnalysis} sessionGains={lastSessionGains} onBackToDashboard={() => navigateTo('dashboard')} onNavigateToNewAnalysis={() => navigateTo('newAnalysis')} onNavigateToLivePracticeSetup={() => navigateTo('livePractice')} onNavigateToProgress={() => navigateTo('progress')} />;
+            case 'livePracticeSetup': return <LivePracticeSetupPage onBackToDashboard={() => navigateTo('dashboard')} onStartSession={(topic) => { setLivePracticeTopic(topic); navigateTo('livePracticeSession'); }} initialTopic={initialLiveTopic} />;
+            case 'livePracticeSession': return <LivePracticeSessionPage topic={livePracticeTopic} onEndSession={handleEndLiveSession} onBackToDashboard={() => navigateTo('dashboard')} onAnalyzeLiveSession={handleAnalyzeLiveRecording} />;
+            case 'paymentSuccess': return <PaymentSuccessPage onVerifyPayment={handlePaymentVerification} />;
+            case 'paymentFailed': return <PaymentFailedPage onRetry={() => navigateTo('billing')} onBackToDashboard={() => navigateTo('dashboard')} />;
+            case 'resourceArticle': return <ResourceArticlePage articleId={selectedResource} onBack={() => navigateTo('resources')} />;
+            case 'termsOfService': return <TermsOfServicePage onBack={() => window.history.back()} />;
+            case 'privacyPolicy': return <PrivacyPolicyPage onBack={() => window.history.back()} />;
+            case 'security': return <SecurityPage onBack={() => window.history.back()} />;
+            case 'contact': return <ContactPage onBack={() => window.history.back()} />;
+            case 'career': return <CareerPage onBack={() => window.history.back()} />;
+            case 'error': return <ErrorPage title={appError?.title} message={appError?.message} onBack={handleLogout} backText="Logout & Start Over" />;
+            default: return <p>Page not found</p>;
         }
     };
     
+    if (isLoading) {
+        return <div className="flex h-screen w-full items-center justify-center bg-background-light dark:bg-background-dark"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
+    }
+
+    if (!user && (page !== 'landing' && page !== 'login' && page !== 'signup' && page !== 'forgotPassword' && page !== 'termsOfService' && page !== 'privacyPolicy' && page !== 'security' && page !== 'contact' && page !== 'career')) {
+        return <LandingPage onNavigateToLogin={() => navigateTo('login')} onNavigateToSignUp={() => navigateTo('signup')} onNavigateToTermsOfService={() => navigateTo('termsOfService')} onNavigateToPrivacyPolicy={() => navigateTo('privacyPolicy')} onNavigateToSecurity={() => navigateTo('security')} onNavigateToContact={() => navigateTo('contact')} onNavigateToCareer={() => navigateTo('career')} />;
+    }
+
     return (
         <>
-            {renderPage()}
-            <SupportButton />
-            {showAchievementModal && <AchievementModal isOpen={showAchievementModal} onClose={() => setShowAchievementModal(false)} onNavigateToProgress={() => { setPage('progress'); setShowAchievementModal(false); }} />}
+            {mainLayoutPages.includes(page) && user ? (
+                <MainLayout 
+                    user={user}
+                    history={analysisHistory}
+                    subscription={userSubscription}
+                    activePage={page as any} 
+                    onLogout={handleLogout}
+                    onNavigateToDashboard={() => navigateTo('dashboard')}
+                    onNavigateToHistory={() => navigateTo('history')}
+                    onNavigateToGoals={() => navigateTo('goals')}
+                    onNavigateToProgress={() => navigateTo('progress')}
+                    onNavigateToResources={() => navigateTo('resources')}
+                    onNavigateToProfile={() => navigateTo('profile')}
+                    onNavigateToSettings={() => navigateTo('settings')}
+                    onNavigateToBilling={() => navigateTo('billing')}
+                    onNavigateToReferral={() => navigateTo('referral')}
+                    onNavigateToTermsOfService={() => navigateTo('termsOfService')}
+                    onNavigateToPrivacyPolicy={() => navigateTo('privacyPolicy')}
+                    onNavigateToSecurity={() => navigateTo('security')}
+                    onNavigateToContact={() => navigateTo('contact')}
+                    onNavigateToCareer={() => navigateTo('career')}
+                >
+                    {page === 'dashboard' && <Dashboard user={user} history={analysisHistory} userGoals={userGoals} trackableGoals={trackableGoals} subscription={userSubscription} onViewReport={handleViewReport} onNavigateToNewAnalysis={() => navigateTo('newAnalysis')} onNavigateToLivePractice={(topic) => { setInitialLiveTopic(topic || ''); navigateTo('livePracticeSetup'); }} onNavigateToGoals={() => navigateTo('goals')} onNavigateToBilling={() => navigateTo('billing')} setToast={setToast} />}
+                    {page === 'history' && <HistoryPage history={analysisHistory} onViewReport={handleViewReport} onNavigateToNewAnalysis={() => navigateTo('newAnalysis')} />}
+                    {page === 'goals' && <GoalsPage goals={trackableGoals} onUpdateGoals={handleTrackableGoalsUpdate} history={analysisHistory} />}
+                    {page === 'progress' && <ProgressPage user={user} history={analysisHistory} userGoals={userGoals} onViewReport={handleViewReport} onNavigateToGoals={() => navigateTo('goals')} onNavigateToNewAnalysis={() => navigateTo('newAnalysis')} />}
+                    {page === 'resources' && <ResourcesPage onNavigateToResource={(id) => { setSelectedResource(id); navigateTo('resourceArticle'); }} />}
+                    {page === 'profile' && <ProfilePage user={user} onUpdateUser={handleUserUpdate} />}
+                    {page === 'settings' && <SettingsPage user={user} history={analysisHistory} setToast={setToast} />}
+                    {page === 'components' && <ComponentsPage />}
+                    {page === 'billing' && <BillingPage user={user} subscription={userSubscription} onSubscriptionUpdate={handleSubscriptionUpdate} onNavigateToPaymentSuccess={(ref, plan, amount) => { setPaymentInfo({ reference: ref, plan, amount }); navigateTo('paymentSuccess'); }} onNavigateToPaymentFailed={() => navigateTo('paymentFailed')} onBackToDashboard={() => navigateTo('dashboard')} setToast={setToast} />}
+                    {page === 'referral' && <ReferralPage user={user} setToast={setToast} />}
+                </MainLayout>
+            ) : (
+                renderPage()
+            )}
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+            <AchievementModal isOpen={showAchievementModal} onClose={() => setShowAchievementModal(false)} onNavigateToProgress={() => { setShowAchievementModal(false); navigateTo('progress'); }} />
+            {user && <SupportButton />}
         </>
     );
 };

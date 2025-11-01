@@ -6,6 +6,7 @@ export interface User {
     avatarUrl?: string;
     createdAt?: string;
     onboardingCompleted: boolean;
+    referralCode?: string;
 }
 
 export type SpeakingContextType = 'presentation' | 'interview' | 'meeting' | 'keynote' | 'sales_pitch' | 'toast' | 'other';
@@ -194,4 +195,19 @@ export interface Resource {
     subtitle: string;
     icon: string;
     content: ContentBlock[];
+}
+
+// Types for Referral System
+export interface Referral {
+    id: number;
+    referrerId: string;
+    referredEmail: string | null;
+    referredId: string | null;
+    status: 'pending' | 'completed';
+    createdAt: string;
+    // Joined data from profiles table
+    referredUser?: { 
+        name: string | null;
+        avatarUrl: string | null;
+    };
 }

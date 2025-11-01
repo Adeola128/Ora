@@ -39,6 +39,8 @@ const SignUpPage: React.FC<{
         setIsLoading(true);
         setError('');
 
+        const refCode = localStorage.getItem('oratora_ref_code');
+
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
@@ -48,13 +50,30 @@ const SignUpPage: React.FC<{
                 }
             }
         });
-
+        
         if (error) {
             setError(error.message);
-        } else if (data.user && !data.session) {
-            // This indicates that the user has signed up but needs to confirm their email.
-            setIsAwaitingConfirmation(true);
+        } else if (data.user) {
+            // If a referral code was present, call the RPC function to process it
+            if (refCode) {
+                const { error: rpcError } = await supabase.rpc('process_referral', {
+                    new_user_id: data.user.id,
+                    p_referral_code: refCode
+                });
+                if (rpcError) {
+                    // Log the error but don't block the user's sign-up flow
+                    console.error('Referral processing error:', rpcError);
+                }
+                // Clear the referral code from storage regardless of success
+                localStorage.removeItem('oratora_ref_code');
+            }
+            
+            // If email confirmation is required, show the confirmation message
+            if (!data.session) {
+                setIsAwaitingConfirmation(true);
+            }
         }
+        
         // If sign up is successful and email confirmation is disabled,
         // `data.session` will exist, and the onAuthStateChange listener in App.tsx
         // will handle navigation automatically.
