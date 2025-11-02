@@ -9,9 +9,17 @@ interface Step3BaselineProps {
 
 const RECORD_DURATION = 30;
 
+const prompts = [
+    "What's a movie you recently watched and what did you think of it?",
+    "Describe your favorite meal in delicious detail.",
+    "If you could have any superpower, what would it be and why?",
+    "Talk about a place you'd love to travel to someday.",
+];
+
 const Step3Baseline: React.FC<Step3BaselineProps> = ({ onBack, onSubmit }) => {
     const { status, startRecording, stopRecording, audioBlob, resetRecording, audioData } = useAudioRecorder();
     const [timeLeft, setTimeLeft] = useState(RECORD_DURATION);
+    const [showPrompts, setShowPrompts] = useState(false);
     
     const timerRef = useRef<number | null>(null);
     const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
@@ -74,8 +82,17 @@ const Step3Baseline: React.FC<Step3BaselineProps> = ({ onBack, onSubmit }) => {
             <p className="mt-3 max-w-2xl text-lg text-text-secondary-light dark:text-text-secondary-dark">
                 Talk about your day or a hobby for 30 seconds. This helps Oratora understand your natural speaking style.
             </p>
+             <button onClick={() => setShowPrompts(!showPrompts)} className="mt-2 text-sm font-semibold text-primary hover:underline">
+                {showPrompts ? 'Hide prompts' : 'Stuck? Get a prompt'}
+            </button>
+            {showPrompts && (
+                <div className="mt-4 max-w-xl w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-left text-sm space-y-2 animate-fade-in-up-small">
+                    <p className="font-bold">Try one of these:</p>
+                    {prompts.map((p, i) => <p key={i} className="text-text-secondary-light dark:text-text-secondary-dark">- {p}</p>)}
+                </div>
+            )}
 
-            <div className="mt-12 flex flex-col items-center gap-8">
+            <div className="mt-8 flex flex-col items-center gap-8">
                 <div className="relative size-52 flex items-center justify-center">
                     <svg className="absolute inset-0 size-full" viewBox="0 0 200 200">
                         <circle className="text-border-light dark:text-border-dark" cx="100" cy="100" fill="transparent" r={radius} stroke="currentColor" strokeWidth="10"></circle>
@@ -99,7 +116,7 @@ const Step3Baseline: React.FC<Step3BaselineProps> = ({ onBack, onSubmit }) => {
                 </div>
 
                 <div className="w-full max-w-md h-20">
-                     <AudioWaveform audioData={audioData} color="#00B3A4" />
+                     <AudioWaveform audioData={audioData} color="#06f9e0" />
                 </div>
                 
                 {!isFinished ? (
@@ -111,15 +128,15 @@ const Step3Baseline: React.FC<Step3BaselineProps> = ({ onBack, onSubmit }) => {
                     </button>
                 ) : (
                     <div className="flex flex-col items-center gap-4 animate-fade-in">
-                        <audio ref={audioPlayerRef} controls />
-                        <button onClick={handleRetake} className="mt-4 flex h-12 transform cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-border-light dark:border-border-dark bg-transparent px-8 font-bold text-text-primary-light dark:text-text-primary-dark transition-all duration-200 ease-in-out hover:scale-105 hover:bg-primary/10">
+                        <audio ref={audioPlayerRef} controls className="w-full max-w-sm" />
+                        <button onClick={handleRetake} className="mt-2 flex h-12 transform cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-border-light dark:border-border-dark bg-transparent px-8 font-bold text-text-primary-light dark:text-text-primary-dark transition-all duration-200 ease-in-out hover:scale-105 hover:bg-primary/10">
                             <span className="truncate">Record Again</span>
                         </button>
                     </div>
                 )}
             </div>
 
-            <div className="mt-12 flex w-full flex-col-reverse items-center justify-between gap-4 sm:flex-row">
+            <div className="mt-16 flex w-full flex-col-reverse items-center justify-between gap-4 sm:flex-row">
                 <button onClick={onBack} className="flex h-12 transform cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-transparent bg-transparent px-8 font-bold text-text-secondary-light transition-all duration-200 ease-in-out hover:bg-gray-500/10 dark:text-text-secondary-dark hover:dark:bg-white/10">
                     <span className="truncate">Back</span>
                 </button>

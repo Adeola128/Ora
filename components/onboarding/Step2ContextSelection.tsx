@@ -51,7 +51,7 @@ const Step2ContextSelection: React.FC<Step2ContextSelectionProps> = ({ onBack, o
                 })}
             </div>
 
-            <div className="mt-12 flex w-full flex-col-reverse items-center justify-between gap-4 sm:flex-row">
+            <div className="mt-16 flex w-full flex-col-reverse items-center justify-between gap-4 sm:flex-row">
                 <button onClick={onBack} className="flex h-12 transform cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-transparent bg-transparent px-8 font-bold text-text-secondary-light transition-all duration-200 ease-in-out hover:bg-gray-500/10 dark:text-text-secondary-dark hover:dark:bg-white/10">
                     <span className="truncate">Back</span>
                 </button>

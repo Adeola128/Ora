@@ -160,22 +160,21 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- RPC to generate a referral code if one doesn't exist for a user.
--- This function now accepts p_user_id as a parameter to ensure the client-side call
--- has a clear signature, which can help prevent schema cache issues.
-CREATE OR REPLACE FUNCTION public.ensure_referral_code(p_user_id UUID)
+CREATE OR REPLACE FUNCTION public.ensure_referral_code()
 RETURNS TEXT AS $$
 DECLARE
   v_referral_code TEXT;
+  current_user_id UUID := auth.uid();
 BEGIN
   -- Check for existing code
-  SELECT referral_code INTO v_referral_code FROM public.profiles WHERE id = p_user_id;
+  SELECT referral_code INTO v_referral_code FROM public.profiles WHERE id = current_user_id;
 
   -- If no code, generate and save one
   IF v_referral_code IS NULL THEN
     v_referral_code := generate_referral_code();
     UPDATE public.profiles
     SET referral_code = v_referral_code
-    WHERE id = p_user_id;
+    WHERE id = current_user_id;
   END IF;
 
   RETURN v_referral_code;

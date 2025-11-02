@@ -29,9 +29,7 @@ const ReferralPage: React.FC<ReferralPageProps> = ({ user, setToast, onUpdateUse
             try {
                 // Step 1: Ensure referral code exists.
                 if (!currentCode) {
-                    const { data: newCode, error: rpcError } = await supabase.rpc('ensure_referral_code', {
-                        p_user_id: user.id,
-                    });
+                    const { data: newCode, error: rpcError } = await supabase.rpc('ensure_referral_code');
                     if (rpcError) throw rpcError;
                     if (!newCode) throw new Error("Referral code could not be generated.");
 

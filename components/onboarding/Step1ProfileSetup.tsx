@@ -67,10 +67,10 @@ const Step1ProfileSetup: React.FC<Step1ProfileSetupProps> = ({ user, onBack, onS
     return (
         <div className="flex flex-col items-center text-center animate-fade-in">
             <h1 className="font-display text-3xl font-extrabold leading-tight tracking-tight text-text-primary-light dark:text-text-primary-dark md:text-4xl lg:text-5xl">
-                Welcome, {user?.name?.split(' ')[0] || 'User'}! Let's get to know you.
+                Tell us about yourself
             </h1>
             <p className="mt-3 max-w-2xl text-lg text-text-secondary-light dark:text-text-secondary-dark">
-                First, let's set up your profile.
+                This helps us personalize your coaching experience.
             </p>
             
             <div className="mt-12 relative">
@@ -132,7 +132,7 @@ const Step1ProfileSetup: React.FC<Step1ProfileSetupProps> = ({ user, onBack, onS
                 })}
             </div>
 
-            <div className="mt-12 flex w-full flex-col-reverse items-center justify-between gap-4 sm:flex-row">
+            <div className="mt-16 flex w-full flex-col-reverse items-center justify-between gap-4 sm:flex-row">
                 <button onClick={onBack} className="flex h-12 transform cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-transparent bg-transparent px-8 font-bold text-text-secondary-light transition-all duration-200 ease-in-out hover:bg-gray-500/10 dark:text-text-secondary-dark hover:dark:bg-white/10">
                     <span className="truncate">Back</span>
                 </button>
