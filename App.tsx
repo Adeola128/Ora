@@ -1,5 +1,4 @@
 
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase, isGeminiConfigured, toCamelCase, toSnakeCase } from './lib/supabaseClient';
@@ -218,7 +217,7 @@ const App: React.FC = () => {
                     trackableGoals: trackable 
                 } = toCamelCase<any>(initialData);
 
-                setUser(profile);
+                setUser({ ...profile, email: session.user.email! });
                 setUserSubscription(sub);
                 setAnalysisHistory(history || []);
                 setUserGoals(goals || defaultUserGoals);
