@@ -1,3 +1,4 @@
+
 // Fix: Populated with necessary type definitions for the application.
 export interface User {
     id: string; // Corresponds to Supabase auth.users.id (UUID)

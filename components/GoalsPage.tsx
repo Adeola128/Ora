@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { TrackableGoal, AnalysisReport } from '../types';
 import GoalModal from './GoalModal';
 
-/*
 interface GoalCardProps {
     goal: TrackableGoal;
     onEdit: (goal: TrackableGoal) => void;
@@ -59,7 +58,7 @@ const GoalCard: React.FC<GoalCardProps> = ({ goal, onEdit, onIncrementProgress }
         </div>
     );
 };
-*/
+
 
 interface GoalsPageProps {
     goals: TrackableGoal[];
@@ -68,8 +67,6 @@ interface GoalsPageProps {
 }
 
 const GoalsPage: React.FC<GoalsPageProps> = ({ goals, onUpdateGoals, history }) => {
-    /*
-    // Original implementation is preserved here for future development.
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingGoal, setEditingGoal] = useState<TrackableGoal | null>(null);
 
@@ -120,61 +117,14 @@ const GoalsPage: React.FC<GoalsPageProps> = ({ goals, onUpdateGoals, history }) 
     const completedGoals = goals.filter(g => g.isCompleted);
 
     return (
-        <div className="animate-fade-in p-4 sm:p-0">
-             <header className="flex flex-wrap justify-between items-center gap-4 mb-8">
-                <p className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">Set & Achieve Your Goals</p>
-                <button onClick={handleAddNewGoal} className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-12 px-6 bg-primary text-white text-base font-bold transition-transform hover:scale-105 shadow-lg shadow-primary/30">
-                    <span className="material-symbols-outlined mr-2">add</span>
-                    <span className="truncate">Add New Goal</span>
-                </button>
-            </header>
-            
-            {goals.length === 0 ? (
-                 <div className="text-center p-12 bg-card-light dark:bg-card-dark rounded-xl border-2 border-dashed border-border-light dark:border-border-dark">
-                    <span className="material-symbols-outlined text-6xl text-primary mb-4">flag</span>
-                    <h3 className="text-xl font-bold">No Goals Yet</h3>
-                    <p className="text-text-muted-light dark:text-text-muted-dark mt-2">Click 'Add New Goal' to create your first goal and start tracking your progress.</p>
-                </div>
-            ) : (
-                <div className="space-y-12">
-                    {automaticGoals.length > 0 && (
-                        <section>
-                            <h3 className="text-2xl font-bold text-text-light dark:text-text-dark mb-4">Automatic Goals</h3>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {automaticGoals.map(goal => (
-                                    <GoalCard key={goal.id} goal={goal} onEdit={handleEditGoal} />
-                                ))}
-                            </div>
-                        </section>
-                    )}
-                    {manualGoals.length > 0 && (
-                        <section>
-                            <h3 className="text-2xl font-bold text-text-light dark:text-text-dark mb-4">Manual Goals</h3>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {manualGoals.map(goal => (
-                                   <GoalCard key={goal.id} goal={goal} onEdit={handleEditGoal} onIncrementProgress={handleIncrementProgress} />
-                                ))}
-                            </div>
-                        </section>
-                    )}
-                    {completedGoals.length > 0 && (
-                         <section>
-                            <details className="group">
-                                <summary className="flex items-center gap-2 cursor-pointer">
-                                    <h3 className="text-2xl font-bold text-text-light dark:text-text-dark">Completed Goals</h3>
-                                    <span className="material-symbols-outlined transition-transform duration-300 group-open:rotate-180">expand_more</span>
-                                </summary>
-                                <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    {completedGoals.map(goal => (
-                                        <GoalCard key={goal.id} goal={goal} onEdit={handleEditGoal} />
-                                    ))}
-                                </div>
-                            </details>
-                        </section>
-                    )}
-                </div>
-            )}
-
+        <div className="p-4 md:p-8 flex flex-col items-center justify-center text-center h-full min-h-[60vh] animate-fade-in">
+            <div className="w-48 h-48 rounded-full flex items-center justify-center bg-primary/10 mb-8">
+                <span className="material-symbols-outlined text-primary text-9xl">construction</span>
+            </div>
+            <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">Goals Page Under Construction</h1>
+            <p className="mt-4 max-w-lg text-lg text-text-muted-light dark:text-text-muted-dark">
+                We're hard at work building an amazing goal-tracking experience for you. This feature is currently under development. Please check back later!
+            </p>
             {isModalOpen && (
                 <GoalModal 
                     goal={editingGoal} 
@@ -184,15 +134,6 @@ const GoalsPage: React.FC<GoalsPageProps> = ({ goals, onUpdateGoals, history }) 
                     history={history}
                 />
             )}
-        </div>
-    );
-    */
-
-    return (
-        <div className="flex flex-col items-center justify-center h-full text-center p-8 animate-fade-in min-h-[50vh]">
-            <span className="material-symbols-outlined text-6xl text-primary mb-4">construction</span>
-            <h1 className="text-3xl font-bold text-text-light dark:text-text-dark">Coming soon.</h1>
-            <p className="mt-2 text-text-muted-light dark:text-text-muted-dark">Under development: "Comment soon."</p>
         </div>
     );
 };

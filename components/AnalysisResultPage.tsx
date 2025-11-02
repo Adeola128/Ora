@@ -414,8 +414,6 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
         );
     }
     
-    // FIX: Type 'unknown[]' is not assignable to type 'Metric[]'.
-    // Replaced `Object.values`, which has poor type inference for this structure, with an explicit array construction to ensure type safety.
     const allMetrics: Metric[] = [
         report.metrics.fluency,
         report.metrics.pacing,
@@ -455,9 +453,37 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                 </header>
 
                 <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8">
+                    {/* Mobile-only sticky navigation */}
+                    <div className="lg:hidden sticky top-20 z-30 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-border-light dark:border-border-dark -mx-4 sm:-mx-6 px-4 sm:px-6">
+                        <nav className="flex overflow-x-auto whitespace-nowrap py-2">
+                            {sections.map(section => (
+                                <a
+                                    key={section.id}
+                                    href={`#${section.id}`}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        const el = document.getElementById(section.id);
+                                        if (el) {
+                                            const y = el.getBoundingClientRect().top + window.pageYOffset - 136;
+                                            window.scrollTo({ top: y, behavior: 'smooth' });
+                                        }
+                                    }}
+                                    className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+                                        activeSection === section.id
+                                            ? 'bg-primary text-white'
+                                            : 'text-text-muted-light dark:text-text-muted-dark hover:bg-slate-100 dark:hover:bg-slate-800'
+                                    }`}
+                                >
+                                    <span className="material-symbols-outlined !text-base">{section.icon}</span>
+                                    {section.label}
+                                </a>
+                            ))}
+                        </nav>
+                    </div>
+
                     <div className="grid grid-cols-12 gap-8">
                         {/* Left Sidebar */}
-                        <aside className="hidden lg:block lg:col-span-2 py-8">
+                        <aside className="hidden lg:block lg:col-span-2 py-6 lg:py-8">
                             <nav className="sticky top-24">
                                 <ul className="space-y-2">
                                     {sections.map(section => (
@@ -480,11 +506,11 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                         </aside>
 
                         {/* Main Content */}
-                        <main className="col-span-12 lg:col-span-10 xl:col-span-7 py-8">
+                        <main className="col-span-12 lg:col-span-10 xl:col-span-7 py-6 lg:py-8">
                             <div className="space-y-12">
                                  {/* Playback Section */}
-                                <section id="video-playback" ref={el => sectionRefs.current[0] = el} className="scroll-mt-24">
-                                    <div className="bg-card-light dark:bg-card-dark p-6 rounded-xl shadow-md border border-border-light dark:border-border-dark">
+                                <section id="video-playback" ref={el => sectionRefs.current[0] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
+                                    <div className="bg-card-light dark:bg-card-dark p-4 sm:p-6 rounded-xl shadow-md border border-border-light dark:border-border-dark">
                                         {mediaUrl ? (
                                             <>
                                                 {isMediaVideo ? (
@@ -517,13 +543,13 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                                 </section>
                                 
                                 {/* Transcript Section */}
-                                <section id="transcript" ref={el => sectionRefs.current[1] = el} className="scroll-mt-24">
+                                <section id="transcript" ref={el => sectionRefs.current[1] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
                                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                         <div>
                                             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Transcript & Analysis</h2>
                                             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Click any part of the transcript to jump to that moment in the playback.</p>
                                         </div>
-                                        <div className="flex-shrink-0 flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-full">
+                                        <div className="flex-shrink-0 flex flex-wrap justify-start sm:justify-end items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-full">
                                             {['All', 'Strengths', 'Weaknesses', 'Issues'].map(filter => (
                                                 <button
                                                     key={filter}
@@ -546,7 +572,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                                 </section>
 
                                 {/* Metrics Section */}
-                                <section id="metrics" ref={el => sectionRefs.current[2] = el} className="scroll-mt-24">
+                                <section id="metrics" ref={el => sectionRefs.current[2] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
                                      <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Key Metrics</h2>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {allMetrics.map(metric => (
@@ -562,7 +588,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                                 </section>
 
                                 {/* Voice Modulation Section */}
-                                <section id="voice-modulation" ref={el => sectionRefs.current[3] = el} className="scroll-mt-24">
+                                <section id="voice-modulation" ref={el => sectionRefs.current[3] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
                                     <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Voice Modulation</h2>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <VoiceModulationCard metric={report.metrics.intonation} title="Intonation" icon="graphic_eq" colorClass="text-purple-500" exercises={[{title: 'Pitch Rollercoaster', description: 'Read a passage with exaggerated pitch changes.'}, {title: 'Emotional Sentence', description: 'Say a neutral phrase with different emotions.'}]} />
@@ -571,7 +597,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                                 </section>
 
                                 {/* Other sections remain the same */}
-                                <section id="ai-feedback" ref={el => sectionRefs.current[4] = el} className="scroll-mt-24">
+                                <section id="ai-feedback" ref={el => sectionRefs.current[4] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
                                      <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">AI Coach Feedback</h2>
                                     <div className="space-y-6">
                                         <div className="bg-card-light dark:bg-card-dark p-6 rounded-xl shadow-md border border-border-light dark:border-border-dark">
@@ -606,7 +632,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                                     </div>
                                 </section>
                                 
-                                <section id="action-plan" ref={el => sectionRefs.current[5] = el} className="scroll-mt-24">
+                                <section id="action-plan" ref={el => sectionRefs.current[5] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
                                     <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Your 7-Day Action Plan</h2>
                                     <div className="space-y-2">
                                         {report.actionPlan.map(day => (
@@ -621,7 +647,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                                     </div>
                                 </section>
                                 
-                                 <section id="comparison" ref={el => sectionRefs.current[6] = el} className="scroll-mt-24">
+                                 <section id="comparison" ref={el => sectionRefs.current[6] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
                                     <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">How You Compare</h2>
                                     <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">See how this session compares to your previous performance and community averages.</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
@@ -670,7 +696,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                                     </div>
                                 </section>
                                 
-                                <section id="next-steps" ref={el => sectionRefs.current[7] = el} className="scroll-mt-24">
+                                <section id="next-steps" ref={el => sectionRefs.current[7] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
                                     <div className="bg-gradient-to-r from-primary to-teal-400 p-8 rounded-xl text-white text-center">
                                         <h2 className="text-3xl font-bold">Ready for the Next Step?</h2>
                                         <p className="mt-2 max-w-xl mx-auto">Keep the momentum going! Start a new analysis to build on what you've learned, or try a live practice session for real-time feedback.</p>
@@ -684,7 +710,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                         </main>
 
                          {/* Right Sidebar (Quick Stats) */}
-                        <aside className="hidden xl:block xl:col-span-3 py-8">
+                        <aside className="hidden xl:block xl:col-span-3 py-6 lg:py-8">
                             <div className="sticky top-24 space-y-6">
                                 <div className="bg-card-light dark:bg-card-dark p-6 rounded-xl shadow-md border border-border-light dark:border-border-dark">
                                     <h3 className="font-bold text-lg">Quick Stats</h3>

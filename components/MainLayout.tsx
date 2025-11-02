@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, AnalysisReport, UserSubscription } from '../types';
 import { calculateStreak, calculateLevelAndXP, calculateAchievements } from './lib/gamification';
 
-type ActivePage = 'dashboard' | 'history' | 'goals' | 'progress' | 'resources' | 'profile' | 'settings' | 'components' | 'billing' | 'referral';
+type ActivePage = 'dashboard' | 'history' | 'goals' | 'courses' | 'progress' | 'resources' | 'profile' | 'settings' | 'components' | 'billing' | 'referral';
 
 interface MainLayoutProps {
     user: User | null;
@@ -15,6 +15,7 @@ interface MainLayoutProps {
     onNavigateToDashboard: () => void;
     onNavigateToHistory: () => void;
     onNavigateToGoals: () => void;
+    onNavigateToCourses: () => void;
     onNavigateToProgress: () => void;
     onNavigateToResources: () => void;
     onNavigateToProfile: () => void;
@@ -37,7 +38,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     onLogout, 
     onNavigateToDashboard,
     onNavigateToHistory,
-    onNavigateToGoals, 
+    onNavigateToGoals,
+    onNavigateToCourses, 
     onNavigateToProgress,
     onNavigateToResources,
     onNavigateToProfile,
@@ -64,6 +66,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         { id: 'history', label: 'History', action: onNavigateToHistory, icon: 'history' },
         { id: 'progress', label: 'Progress', action: onNavigateToProgress, icon: 'trending_up' },
         { id: 'goals', label: 'Goals', action: onNavigateToGoals, icon: 'flag' },
+        { id: 'courses', label: 'Courses', action: onNavigateToCourses, icon: 'smart_display' },
         { id: 'resources', label: 'Resources', action: onNavigateToResources, icon: 'school' },
     ];
     

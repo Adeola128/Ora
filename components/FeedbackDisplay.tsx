@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
 
 interface FeedbackDisplayProps {
@@ -87,8 +87,40 @@ const FeedbackCycleTimer: React.FC<{ progress: number }> = ({ progress }) => {
     );
 };
 
+interface BodyLanguageMetricProps {
+    icon: string;
+    label: string;
+    value: string;
+}
+
+const BodyLanguageMetric: React.FC<BodyLanguageMetricProps> = ({ icon, label, value }) => (
+    <div className="bg-white/5 p-2 rounded-lg text-center">
+        <span className="material-symbols-outlined text-primary text-2xl">{icon}</span>
+        <p className="text-xs text-text-muted-dark uppercase tracking-wider mt-1">{label}</p>
+        <p className="text-sm font-semibold text-white h-5 truncate" title={value}>{value}</p>
+    </div>
+);
+
 
 const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({ wpm, volume, fillerWordCount, feedbackTips, isAiSpeaking, feedbackCycleProgress, pitchVariation, tone, bodyLanguage }) => {
+    const [newestTipId, setNewestTipId] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (feedbackTips.length > 0) {
+            const latestTip = feedbackTips[feedbackTips.length - 1];
+            // Check if the latest tip is different from the currently highlighted one
+            if (latestTip.id !== newestTipId) {
+                setNewestTipId(latestTip.id);
+                // Set a timer to remove the highlight
+                const timer = setTimeout(() => {
+                    setNewestTipId(currentId => (currentId === latestTip.id ? null : currentId));
+                }, 3000); // Highlight for 3 seconds
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [feedbackTips]);
+
+
     return (
         <div className={`w-full h-full p-4 flex flex-col gap-4 text-white transition-all duration-300 border-l-4 ${isAiSpeaking ? 'border-primary' : 'border-transparent'}`}>
             <div className="flex items-center justify-center gap-3 border-b border-white/10 pb-3">
@@ -124,17 +156,17 @@ const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({ wpm, volume, fillerWo
                 </div>
                  <div className="bg-white/5 p-3 rounded-lg text-center">
                     <h3 className="text-xs font-bold text-text-muted-dark uppercase tracking-wider">Tone</h3>
-                    <p className="text-2xl font-bold text-primary h-12 flex items-center justify-center">{tone}</p>
+                    <p className="text-2xl font-bold text-primary h-12 flex items-center justify-center truncate" title={tone}>{tone}</p>
                      <p className="text-xs font-semibold text-gray-400 h-4">Detected emotional quality</p>
                 </div>
             </div>
 
             <div className="bg-white/5 p-3 rounded-lg">
                 <h3 className="text-xs font-bold text-text-muted-dark uppercase tracking-wider mb-2">Body Language</h3>
-                <div className="space-y-1 text-sm">
-                    <div className="flex justify-between"><span>Posture:</span> <span className="font-semibold text-primary">{bodyLanguage.posture}</span></div>
-                    <div className="flex justify-between"><span>Gestures:</span> <span className="font-semibold text-primary">{bodyLanguage.gestures}</span></div>
-                    <div className="flex justify-between"><span>Eye Contact:</span> <span className="font-semibold text-primary">{bodyLanguage.eyeContact}</span></div>
+                <div className="grid grid-cols-3 gap-2">
+                    <BodyLanguageMetric icon="accessibility_new" label="Posture" value={bodyLanguage.posture} />
+                    <BodyLanguageMetric icon="waving_hand" label="Gestures" value={bodyLanguage.gestures} />
+                    <BodyLanguageMetric icon="visibility" label="Eye Contact" value={bodyLanguage.eyeContact} />
                 </div>
             </div>
 
@@ -163,7 +195,7 @@ const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({ wpm, volume, fillerWo
                                 exitActive: 'opacity-0 -translate-x-4 transition-all duration-300',
                             }}
                          >
-                            <div className="bg-primary/20 border border-primary/40 text-white p-3 rounded-lg text-sm flex items-start gap-3">
+                            <div className={`p-3 rounded-lg text-sm flex items-start gap-3 border transition-all duration-300 ${tip.id === newestTipId ? 'bg-primary/40 border-primary/60' : 'bg-primary/20 border-primary/40'}`}>
                                 <span className="material-symbols-outlined text-primary mt-0.5">lightbulb</span>
                                 <span>{tip.text}</span>
                             </div>

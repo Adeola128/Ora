@@ -18,6 +18,7 @@ import AnalysisResultPage from './components/AnalysisResultPage';
 import MainLayout from './components/MainLayout';
 import HistoryPage from './components/HistoryPage';
 import GoalsPage from './components/GoalsPage';
+import CoursesPage from './components/CoursesPage';
 import ProgressPage from './components/ProgressPage';
 import ResourcesPage from './components/ResourcesPage';
 import AchievementModal from './components/AchievementModal';
@@ -51,6 +52,7 @@ type Page =
     | 'dashboard'
     | 'history'
     | 'goals'
+    | 'courses'
     | 'progress'
     | 'resources'
     | 'resourceArticle'
@@ -140,6 +142,8 @@ const App: React.FC = () => {
                 setUserGoals(defaultUserGoals);
                 setTrackableGoals([]);
                 setPage('landing');
+                setIsLoading(false);
+                initialAuthCheckCompleted.current = true;
                 return;
             }
 
@@ -202,510 +206,312 @@ const App: React.FC = () => {
                     };
                 }
                 
-                // Now that we have `initialData` from either RPC or fallback, process it.
-                const camelCaseData = toCamelCase<any>(initialData);
+                if (!initialData.profile) {
+                     throw new Error("User profile is missing after initial data fetch.");
+                }
 
-                const userData: User = {
-                    ...camelCaseData.profile,
-                    id: session.user.id,
-                    email: session.user.email || '',
-                };
-                setUser(userData);
+                const { 
+                    profile, 
+                    subscription: sub, 
+                    analysisHistory: history,
+                    userGoals: goals, 
+                    trackableGoals: trackable 
+                } = toCamelCase<any>(initialData);
+
+                setUser(profile);
+                setUserSubscription(sub);
+                setAnalysisHistory(history || []);
+                setUserGoals(goals || defaultUserGoals);
+                setTrackableGoals(trackable || []);
                 
-                setUserSubscription(camelCaseData.subscription || null);
-                setAnalysisHistory(camelCaseData.analysisHistory || []);
-                setUserGoals(camelCaseData.userGoals || defaultUserGoals);
-                setTrackableGoals(camelCaseData.trackableGoals || []);
-
-                if (userData.onboardingCompleted) {
-                    setPage('dashboard');
-                } else {
+                if (!profile.onboardingCompleted) {
                     setPage('onboarding');
+                } else {
+                    setPage('dashboard');
                 }
 
             } catch (error) {
-                console.error("Auth state handling error:", error);
-                setAppError({
-                    title: "Application Error",
-                    message: `We couldn't load your user data due to an unexpected issue. Please try logging out and starting over. If the problem persists, contact support.`,
-                });
+                console.error("Critical error during user session processing:", error);
+                setAppError({ title: "Failed to load your profile", message: (error as Error).message });
                 setPage('error');
+            } finally {
+                setIsLoading(false);
+                initialAuthCheckCompleted.current = true;
             }
         };
-    
-        // Load theme preferences
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        if (savedTheme === 'dark') document.documentElement.classList.add('dark');
 
-        // This function runs once to handle the initial authentication check.
-        const initializeAndSubscribe = async () => {
-            // First, get the current session to immediately determine auth state on load.
-            const { data: { session } } = await supabase.auth.getSession();
-            await processSession(session);
-            
-            // This is the key fix: guarantee that the loading state is turned off after the initial check.
-            setIsLoading(false);
-            initialAuthCheckCompleted.current = true;
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            // After initial load, any auth change (login, logout) will trigger this.
+            if (initialAuthCheckCompleted.current) {
+                await processSession(session);
+            }
+        });
 
-            // Now, set up the listener for any subsequent changes (e.g., user logs in/out in another tab).
-            const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-                // We only need to react to explicit sign-in/out events.
-                // The initial 'INITIAL_SESSION' event is ignored because we already handled it with getSession().
-                if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-                    await processSession(session);
-                }
-            });
+        // Initial check on component mount.
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            processSession(session);
+        });
 
-            return subscription;
-        };
-        
-        const subscriptionPromise = initializeAndSubscribe();
-
-        // Return a cleanup function to unsubscribe when the component unmounts.
         return () => {
-            subscriptionPromise.then(subscription => subscription?.unsubscribe());
+            subscription?.unsubscribe();
         };
-    }, []); // Empty dependency array ensures this runs only once on mount.
+    }, []);
 
-    const isConfigured = isGeminiConfigured;
-    if (!isConfigured) {
-        // ... (Error component remains the same)
-    }
-
-    // --- Data Update Handlers ---
-    const handleSubscriptionUpdate = useCallback(async (newPlan: SubscriptionPlan) => {
-        if (!user) return;
-        
-        const eligibleForTrial = (userSubscription?.plan === 'free' || !userSubscription) && newPlan === 'premium';
+    // --- Navigation and Flow Handlers ---
+    const navigateTo = (p: Page) => setPage(p);
     
-        const newSubscriptionData: UserSubscription = {
-            plan: newPlan,
-            status: eligibleForTrial ? 'trialing' : 'active',
-            trialEndsAt: eligibleForTrial ? new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString() : null,
-            periodEndsAt: (newPlan !== 'free' && !eligibleForTrial) ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null,
-        };
-        
-        if (newPlan === 'free') {
-            newSubscriptionData.status = 'active';
-            newSubscriptionData.trialEndsAt = null;
-        }
-
-        const { data, error } = await supabase
-            .from('subscriptions')
-            .upsert(toSnakeCase({ ...newSubscriptionData, id: user.id }))
-            .select()
-            .single();
-        
-        if (error) {
-            throw new Error(`Failed to update subscription: ${error.message}`);
-        } else if (data) {
-            setUserSubscription(toCamelCase<UserSubscription>(data));
-             if (eligibleForTrial) {
-                setToast({ message: `Your 3-week Premium trial has started!`, type: 'success' });
-            } else if (newPlan === 'free') {
-                 setToast({ message: 'Successfully downgraded to the Free plan.', type: 'info' });
-            } else {
-                 setToast({ message: `Successfully upgraded to ${newPlan.charAt(0).toUpperCase() + newPlan.slice(1)}!`, type: 'success' });
-            }
-        }
-    }, [user, userSubscription]);
-    
-    const handlePaymentVerification = async () => {
-        if (!paymentInfo || !user) {
-            setToast({ message: 'Payment verification failed: Missing data.', type: 'error' });
-            setPage('paymentFailed');
-            return;
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-        const isVerified = true;
-
-        if (isVerified) {
-            try {
-                await handleSubscriptionUpdate(paymentInfo.plan);
-                
-                const { error: paymentError } = await supabase.from('payments').insert(toSnakeCase({
-                    userId: user.id,
-                    plan: paymentInfo.plan,
-                    amount: paymentInfo.amount,
-                    status: 'Paid',
-                    providerReference: paymentInfo.reference,
-                }));
-                
-                if (paymentError) throw paymentError;
-
-                setToast({ message: 'Your new plan is now active!', type: 'success' });
-                setPage('dashboard');
-
-            } catch (error) {
-                console.error("Error during post-payment processing:", error);
-                let message = 'An unknown error occurred.';
-                if (error instanceof Error) {
-                    message = error.message;
-                } else if (error && typeof error === 'object' && 'message' in error && typeof (error as { message: unknown }).message === 'string') {
-                    message = (error as { message: string }).message;
-                }
-                setToast({ message: `An error occurred while activating your plan: ${message}`, type: 'error' });
-                setPage('paymentFailed');
-            }
-        } else {
-            setToast({ message: 'Payment could not be verified.', type: 'error' });
-            setPage('paymentFailed');
-        }
-    };
-
-    const handleGoalsUpdate = useCallback(async (newGoals: UserGoals) => {
-        if (!user) return;
-        const { error } = await supabase.from('user_goals').upsert(toSnakeCase({ userId: user.id, goals: newGoals }));
-        if (error) {
-            setToast({ message: `Failed to update goals: ${error.message}`, type: 'error' });
-        } else {
-            setUserGoals(newGoals);
-            setToast({ message: "Your goal settings have been updated!", type: 'success' });
-        }
-    }, [user]);
-
-    const handleTrackableGoalsUpdate = useCallback(async (newGoals: TrackableGoal[]) => {
-        if (!user) return;
-    
-        // 1. Fetch current DB state to determine deletions
-        const { data: currentGoalsData, error: fetchError } = await supabase
-            .from('trackable_goals')
-            .select('id')
-            .eq('user_id', user.id);
-    
-        if (fetchError) {
-            setToast({ message: `Failed to fetch current goals: ${fetchError.message}`, type: 'error' });
-            return;
-        }
-    
-        // 2. Calculate which goals to delete
-        const currentGoalIds = new Set((currentGoalsData || []).map(g => g.id));
-        const newGoalIds = new Set(newGoals.map(g => g.id).filter(id => typeof id === 'number'));
-        const deletedIds = [...currentGoalIds].filter(id => !newGoalIds.has(id));
-    
-        // 3. Separate new goals (to insert) from existing goals (to update)
-        const goalsToInsert: any[] = [];
-        const goalsToUpdate: any[] = [];
-    
-        newGoals.forEach(goal => {
-            const { id, ...restOfGoal } = goal;
-            const goalPayload = { ...restOfGoal, userId: user.id };
-            if (typeof id === 'number') {
-                goalsToUpdate.push({ id, ...goalPayload });
-            } else {
-                goalsToInsert.push(goalPayload); // New goals have temp string IDs that are stripped
-            }
-        });
-    
-        const errors: string[] = [];
-    
-        // 4. Perform DB operations in parallel for efficiency
-        const promises = [];
-        if (deletedIds.length > 0) {
-            promises.push(supabase.from('trackable_goals').delete().in('id', deletedIds));
-        }
-        if (goalsToInsert.length > 0) {
-            promises.push(supabase.from('trackable_goals').insert(toSnakeCase(goalsToInsert)));
-        }
-        if (goalsToUpdate.length > 0) {
-            promises.push(supabase.from('trackable_goals').upsert(toSnakeCase(goalsToUpdate)));
-        }
-        
-        const results = await Promise.all(promises);
-        results.forEach(res => {
-            if (res.error) errors.push(res.error.message);
-        });
-    
-        // 5. Re-fetch all goals from DB to ensure UI is perfectly in sync with the source of truth
-        const { data: finalGoalsData, error: finalFetchError } = await supabase
-            .from('trackable_goals')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at');
-    
-        // 6. Report final status to user and update local state
-        if (finalFetchError) {
-            setToast({ message: `Goals updated, but failed to refresh view: ${finalFetchError.message}`, type: 'error' });
-        } else if (errors.length > 0) {
-            setToast({ message: `Some errors occurred: ${errors.join(', ')}`, type: 'error' });
-        } else {
-            setToast({ message: "Your goals have been updated!", type: 'success' });
-        }
-        
-        if (finalGoalsData) {
-            setTrackableGoals(toCamelCase<TrackableGoal[]>(finalGoalsData));
-        }
-    }, [user, setToast]);
-
-    const handleUserUpdate = useCallback(async (updatedUser: Partial<User>) => {
-        if (!user) return;
-        
-        // The `updated_at` field is automatically handled by the database trigger.
-        // Sending it from the client was causing an error because the Date object was being converted improperly.
-        const snakeCaseUpdate = toSnakeCase(updatedUser);
-        const { data, error } = await supabase.from('profiles').update(snakeCaseUpdate).eq('id', user.id).select().single();
-        
-        if (error) {
-            setToast({ message: `Profile update failed: ${error.message}`, type: 'error' });
-        } else if (data) {
-            setUser(prev => ({...prev!, ...toCamelCase<User>(data)}));
-            setToast({ message: "Your profile has been updated!", type: 'success' });
-        }
-    }, [user, setToast]);
-
     const handleLogout = async () => {
         await supabase.auth.signOut();
-        setUser(null);
-        setUserSubscription(null);
-        setAnalysisHistory([]);
-        setUserGoals(defaultUserGoals);
-        setTrackableGoals([]);
-        setPage('landing');
+        // The onAuthStateChange listener will handle resetting state and navigating to 'landing'.
     };
 
-    const handleOnboardingComplete = async (data: OnboardingData) => {
-        if (!user) return;
-        
-        let profileUpdate: Partial<User> = {
-            name: data.name,
-            onboardingCompleted: true,
-        };
-        
-        if (data.profilePicture) {
-            const file = data.profilePicture;
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-            const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file);
-            if (!uploadError) {
-                const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-                profileUpdate.avatarUrl = urlData.publicUrl;
-            } else {
-                 setToast({ message: `Avatar upload failed: ${uploadError.message}`, type: 'error' });
-            }
-        }
-        
-        await handleUserUpdate(profileUpdate);
-        
-        if (data.speakingGoals.length > 0) {
-            await handleGoalsUpdate({ ...userGoals, primaryGoals: data.speakingGoals });
-        }
-        
-        if (!userSubscription) {
-            await handleSubscriptionUpdate('premium');
-        }
-
-        if (data.baselineRecording) {
-            const baselineContext: AnalysisContext = {
-                category: data.selectedContext || 'Personal',
-                name: 'My First Baseline Analysis',
-                audienceSize: 1,
-                formality: 'Casual',
-                duration: 30,
-                goals: data.speakingGoals,
-                script: null,
-            };
-            setAnalysisContext(baselineContext);
-            handleAnalysisStart(data.baselineRecording);
-        } else {
-            setPage('dashboard');
-        }
-    };
-    
-    const handleLogin = () => setPage('dashboard');
-    const handleSignUp = () => {};
-
-    const handleContextSelected = (context: AnalysisContext) => {
-        setAnalysisContext(context);
-        setPage('upload');
-    };
-
-    const handleAnalysisStart = (media: Blob | File) => {
-        setMediaForAnalysis(media);
-        setAnalysisError(null);
-        setPage('processing');
-    };
-
-    const handleAnalysisComplete = async (report: AnalysisReport) => {
-        if (!user) {
-            setToast({ message: "Your session has expired. Please log in again.", type: 'error' });
-            handleLogout();
+    const handleUpdateUser = useCallback(async (updates: Partial<User>) => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+            setToast({ message: 'You must be logged in to update your profile.', type: 'error' });
             return;
         }
     
-        try {
-            const { updatedGoals, newlyCompleted } = processGoalsWithNewReport(trackableGoals, report);
-            
-            // This `try...catch` block specifically handles errors that might occur during goal updates,
-            // which could be caused by `JSON.stringify` on complex objects or other processing steps.
-            // By isolating this, we prevent a goal-update failure from stopping the entire analysis completion flow.
-            try {
-                if (JSON.stringify(updatedGoals) !== JSON.stringify(trackableGoals)) {
-                    // We call the main update handler which will persist changes to the DB
-                    await handleTrackableGoalsUpdate(updatedGoals); 
-                    setTrackableGoals(updatedGoals); // Also update local state immediately
-                    
-                    newlyCompleted.forEach(async (goal) => {
-                        setToast({ message: `Goal Completed: ${goal.title}!`, type: 'success' });
-                        if (user) {
-                            const emailContent = generateGoalCompletionEmail(user, goal);
-                            await sendEmailNotification({ to: user.email, subject: emailContent.subject, html: emailContent.html });
-                        }
-                    });
-                }
-            } catch (e: unknown) {
-                console.error("Error processing goals after analysis:", e);
-                let message = "Could not update your goal progress.";
-                if (e instanceof Error) {
-                    message = `Error updating goals: ${e.message}`;
-                } else if (typeof e === 'string') {
-                    message = `Error updating goals: ${e}`;
-                } else if (e && typeof e === 'object' && 'message' in e && typeof (e as { message: unknown }).message === 'string') {
-                    message = `Error updating goals: ${(e as { message: string }).message}`;
-                }
-                setToast({ message, type: 'error' });
-            }
-
-            const { error } = await supabase.from('analysis_reports').insert(toSnakeCase({ userId: user.id, report: report }));
+        const { error } = await supabase.from('profiles').update(toSnakeCase(updates)).eq('id', session.user.id);
     
-            if (error) {
-                console.error("Failed to save report to Supabase:", error);
-                setToast({ message: `Your report was generated but could not be saved to your history. Error: ${error.message}`, type: 'error' });
-                setAnalysisResult(report);
-                setLastSessionGains(null);
-            } else {
-                setAnalysisResult(report);
-                const newHistory = [report, ...analysisHistory];
-                setAnalysisHistory(newHistory);
-                
-                const oldAchievements = calculateAchievements(analysisHistory);
-                const newAchievements = calculateAchievements(newHistory);
-                const newlyUnlocked = newAchievements.filter((newAch, index) => newAch.unlocked && !oldAchievements[index].unlocked);
-                
-                const oldXp = calculateLevelAndXP(analysisHistory, oldAchievements).totalXp;
-                const newXp = calculateLevelAndXP(newHistory, newAchievements).totalXp;
-                const xpGained = newXp - oldXp;
-                
-                setLastSessionGains({ xp: xpGained, newAchievements: newlyUnlocked });
-                if (newlyUnlocked.length > 0) setShowAchievementModal(true);
+        if (error) {
+            setToast({ message: `Failed to update profile: ${error.message}`, type: 'error' });
+        } else {
+            setUser(prevUser => (prevUser ? { ...prevUser, ...updates } : null));
+            // Only show toast for user-initiated updates, not silent background ones.
+            if (!('referralCode' in updates && Object.keys(updates).length === 1)) {
+                setToast({ message: 'Profile updated successfully!', type: 'success' });
             }
-        } catch (e) {
-            console.error("Error during analysis completion handling:", e);
-            let message = "An unexpected error occurred while processing your results.";
-            if (e instanceof Error) {
-                message = e.message;
-            } else if (typeof e === 'string') {
-                message = e;
-            }
-            setToast({ message, type: 'error' });
-            setAnalysisResult(report);
-            setLastSessionGains(null);
-        } finally {
-            setPage('analysisResult');
         }
-    };
-    
-    const handleAnalysisError = (error: string) => setAnalysisError(error);
-    const handleEndLiveSession = (summary: { duration: number; feedback: string[]; fillerWords: Map<string, number>; avgWpm: number; }) => {
-        setLiveSessionSummary(summary);
-        setPage('livePracticeSession'); // stay on this page to show summary
-    };
-    
-    const handleAnalyzeLiveRecording = (audio: Blob, context: AnalysisContext) => {
-        setAnalysisContext(context);
-        handleAnalysisStart(audio);
-    };
+    }, [setToast]);
 
-    const handleViewReport = (report: AnalysisReport) => {
+    const handleOnboardingComplete = useCallback(async (data: OnboardingData) => {
+        if (!user) return;
+        setIsLoading(true);
+        try {
+            const updates: Partial<User> & { onboardingCompleted: boolean } = {
+                name: data.name,
+                onboardingCompleted: true,
+            };
+
+            if (data.profilePicture) {
+                const fileExt = data.profilePicture.name.split('.').pop();
+                const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, data.profilePicture);
+                if (uploadError) throw uploadError;
+                
+                const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+                updates.avatarUrl = urlData.publicUrl;
+            }
+            
+            await handleUpdateUser(updates);
+
+            if (data.baselineRecording) {
+                setMediaForAnalysis(data.baselineRecording);
+                setAnalysisContext({
+                    category: data.selectedContext || 'Personal',
+                    name: 'Onboarding Baseline',
+                    audienceSize: 1,
+                    formality: 'Casual',
+                    duration: 30,
+                    goals: data.speakingGoals,
+                });
+                navigateTo('processing');
+            } else {
+                navigateTo('dashboard');
+            }
+
+        } catch (error) {
+            console.error("Onboarding completion error:", error);
+            setToast({ message: "Failed to save onboarding data.", type: 'error' });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [user, handleUpdateUser, setToast]);
+    
+    const handleAnalysisComplete = useCallback(async (report: AnalysisReport) => {
+        if (!user) return;
+
+        const { error } = await supabase.from('analysis_reports').insert({ user_id: user.id, report });
+        if (error) {
+            setToast({ message: `Failed to save your report: ${error.message}`, type: 'error' });
+        }
+
+        const newHistory = [report, ...analysisHistory];
+        setAnalysisHistory(newHistory);
         setAnalysisResult(report);
-        setMediaForAnalysis(null); // Clear media as we don't have it for old reports
-        setLastSessionGains(null); // No new gains for viewing old reports
-        setPage('analysisResult');
+
+        const oldAchievements = calculateAchievements(analysisHistory);
+        const newAchievements = calculateAchievements(newHistory);
+        const newlyUnlocked = newAchievements.filter((ach, i) => ach.unlocked && !oldAchievements[i].unlocked);
+        
+        const { updatedGoals, newlyCompleted } = processGoalsWithNewReport(trackableGoals, report);
+        // Here you would save updatedGoals to the database
+        setTrackableGoals(updatedGoals);
+
+        for (const goal of newlyCompleted) {
+            setToast({ message: `Goal Completed: ${goal.title}!`, type: 'success' });
+            // Fix: Added 'to' property to email options to match EmailOptions type.
+            if (user.email) sendEmailNotification({ to: user.email, ...generateGoalCompletionEmail(user, goal) });
+        }
+        
+        const xpFromReport = Math.round(report.overallScore);
+        const xpFromAchievements = newlyUnlocked.reduce((sum, ach) => sum + (XP_MAP[ach.id] || 0), 0);
+        
+        setLastSessionGains({ xp: xpFromReport + xpFromAchievements, newAchievements: newlyUnlocked });
+
+        if (analysisHistory.length === 0 && newHistory.length > 0) {
+            setShowAchievementModal(true);
+        }
+
+        navigateTo('analysisResult');
+    }, [user, analysisHistory, trackableGoals, setToast]);
+    
+    const handleSubscriptionUpdate = useCallback(async (newPlan: SubscriptionPlan) => {
+        if (!user) return;
+        setToast({ message: 'Updating your subscription...', type: 'info' });
+        
+        const endsAt = new Date();
+        endsAt.setMonth(endsAt.getMonth() + 1);
+
+        const newSubscription: UserSubscription = {
+            plan: newPlan,
+            status: 'active',
+            periodEndsAt: newPlan === 'free' ? null : endsAt.toISOString(),
+            trialEndsAt: null
+        };
+        
+        const { error } = await supabase.from('subscriptions').upsert(toSnakeCase({ id: user.id, ...newSubscription }));
+
+        if(error) {
+            setToast({ message: `Failed to update subscription: ${error.message}`, type: 'error' });
+        } else {
+            setUserSubscription(newSubscription);
+            setToast({ message: `Subscription updated to ${newPlan}!`, type: 'success' });
+        }
+    }, [user, setToast]);
+
+    const handleVerifyPayment = useCallback(async () => {
+        if (!user || !paymentInfo) {
+            navigateTo('paymentFailed');
+            return;
+        }
+        
+        const { error: paymentError } = await supabase.from('payments').insert(toSnakeCase({
+            userId: user.id,
+            plan: paymentInfo.plan,
+            amount: paymentInfo.amount,
+            status: 'Paid',
+            providerReference: paymentInfo.reference,
+        }));
+        
+        if (paymentError) {
+            setToast({ message: 'Error recording payment, but we will upgrade your plan.', type: 'error' });
+        }
+
+        await handleSubscriptionUpdate(paymentInfo.plan);
+        setToast({ message: 'Payment verified and plan upgraded!', type: 'success' });
+        navigateTo('dashboard');
+
+    }, [user, paymentInfo, handleSubscriptionUpdate, setToast]);
+
+    // --- RENDER LOGIC ---
+    if (isLoading && !initialAuthCheckCompleted.current) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-background-light dark:bg-background-dark">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
+            </div>
+        );
     }
 
-    const navigateTo = (targetPage: Page) => setPage(targetPage);
-    
-    const mainLayoutPages: Page[] = ['dashboard', 'history', 'goals', 'progress', 'resources', 'profile', 'settings', 'components', 'billing', 'referral'];
+    if (appError) {
+        return <ErrorPage title={appError.title} message={appError.message} />;
+    }
 
     const renderPage = () => {
-        switch (page) {
-            case 'landing': return <LandingPage onNavigateToLogin={() => navigateTo('login')} onNavigateToSignUp={() => navigateTo('signup')} onNavigateToTermsOfService={() => navigateTo('termsOfService')} onNavigateToPrivacyPolicy={() => navigateTo('privacyPolicy')} onNavigateToSecurity={() => navigateTo('security')} onNavigateToContact={() => navigateTo('contact')} onNavigateToCareer={() => navigateTo('career')} />;
-            case 'login': return <LoginPage onNavigateToSignUp={() => navigateTo('signup')} onNavigateToForgotPassword={() => navigateTo('forgotPassword')} />;
-            case 'signup': return <SignUpPage onNavigateToLogin={() => navigateTo('login')} />;
-            case 'forgotPassword': return <ForgotPasswordPage onNavigateToLogin={() => navigateTo('login')} setToast={setToast} />;
-            case 'onboarding': return <OnboardingFlow user={user} onOnboardingComplete={handleOnboardingComplete} />;
-            case 'newAnalysis': return <ContextSelectionPage onBackToDashboard={() => navigateTo('dashboard')} onContextSelected={handleContextSelected} />;
-            case 'livePractice': return <LivePracticeSetupPage onBackToDashboard={() => navigateTo('dashboard')} onStartSession={(topic) => { setLivePracticeTopic(topic); navigateTo('livePracticeSession'); }} />;
-            case 'contextSelection': return <ContextSelectionPage onBackToDashboard={() => navigateTo('dashboard')} onContextSelected={handleContextSelected} />;
-            case 'upload': return <UploadPage context={analysisContext} onBack={() => navigateTo('contextSelection')} onAnalysisStart={handleAnalysisStart} onNavigateToLivePractice={() => navigateTo('livePractice')} />;
-            case 'processing': return <ProcessingPage media={mediaForAnalysis} context={analysisContext} history={analysisHistory} onAnalysisComplete={handleAnalysisComplete} onAnalysisError={handleAnalysisError} error={analysisError} onRetry={() => handleAnalysisStart(mediaForAnalysis!)} onBackToUpload={() => navigateTo('upload')} />;
-            case 'analysisResult': return <AnalysisResultPage user={user} report={analysisResult} media={mediaForAnalysis} sessionGains={lastSessionGains} onBackToDashboard={() => navigateTo('dashboard')} onNavigateToNewAnalysis={() => navigateTo('newAnalysis')} onNavigateToLivePracticeSetup={() => navigateTo('livePractice')} onNavigateToProgress={() => navigateTo('progress')} />;
-            case 'livePracticeSetup': return <LivePracticeSetupPage onBackToDashboard={() => navigateTo('dashboard')} onStartSession={(topic) => { setLivePracticeTopic(topic); navigateTo('livePracticeSession'); }} initialTopic={initialLiveTopic} />;
-            case 'livePracticeSession': return <LivePracticeSessionPage topic={livePracticeTopic} onEndSession={handleEndLiveSession} onBackToDashboard={() => navigateTo('dashboard')} onAnalyzeLiveSession={handleAnalyzeLiveRecording} />;
-            case 'paymentSuccess': return <PaymentSuccessPage onVerifyPayment={handlePaymentVerification} />;
-            case 'paymentFailed': return <PaymentFailedPage onRetry={() => navigateTo('billing')} onBackToDashboard={() => navigateTo('dashboard')} />;
-            case 'resourceArticle': return <ResourceArticlePage articleId={selectedResource} onBack={() => navigateTo('resources')} />;
-            case 'termsOfService': return <TermsOfServicePage onBack={() => window.history.back()} />;
-            case 'privacyPolicy': return <PrivacyPolicyPage onBack={() => window.history.back()} />;
-            case 'security': return <SecurityPage onBack={() => window.history.back()} />;
-            case 'contact': return <ContactPage onBack={() => window.history.back()} />;
-            case 'career': return <CareerPage onBack={() => window.history.back()} />;
-            case 'error': return <ErrorPage title={appError?.title} message={appError?.message} onBack={handleLogout} backText="Logout & Start Over" />;
-            default: return <p>Page not found</p>;
+        if (!user) {
+            switch (page) {
+                case 'signup': return <SignUpPage onNavigateToLogin={() => navigateTo('login')} />;
+                case 'forgotPassword': return <ForgotPasswordPage onNavigateToLogin={() => navigateTo('login')} setToast={setToast} />;
+                case 'termsOfService': return <TermsOfServicePage onBack={() => navigateTo('landing')} />;
+                case 'privacyPolicy': return <PrivacyPolicyPage onBack={() => navigateTo('landing')} />;
+                case 'security': return <SecurityPage onBack={() => navigateTo('landing')} />;
+                case 'contact': return <ContactPage onBack={() => navigateTo('landing')} />;
+                case 'career': return <CareerPage onBack={() => navigateTo('landing')} />;
+                case 'login': return <LoginPage onNavigateToSignUp={() => navigateTo('signup')} onNavigateToForgotPassword={() => navigateTo('forgotPassword')} />;
+                case 'landing': default: return <LandingPage onNavigateToLogin={() => navigateTo('login')} onNavigateToSignUp={() => navigateTo('signup')} onNavigateToTermsOfService={() => navigateTo('termsOfService')} onNavigateToPrivacyPolicy={() => navigateTo('privacyPolicy')} onNavigateToSecurity={() => navigateTo('security')} onNavigateToContact={() => navigateTo('contact')} onNavigateToCareer={() => navigateTo('career')} />;
+            }
         }
+        
+        if (page === 'onboarding') {
+            return <OnboardingFlow user={user} onOnboardingComplete={handleOnboardingComplete} />;
+        }
+        
+        const AppOverlays = () => (
+            <>
+                {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+                {showAchievementModal && <AchievementModal isOpen={showAchievementModal} onClose={() => setShowAchievementModal(false)} onNavigateToProgress={() => navigateTo('progress')} />}
+                <SupportButton />
+            </>
+        );
+
+        switch(page) {
+            case 'contextSelection': return <><ContextSelectionPage onBackToDashboard={() => navigateTo('dashboard')} onContextSelected={(ctx) => { setAnalysisContext(ctx); navigateTo('upload'); }} /><AppOverlays/></>;
+            case 'upload': return <><UploadPage context={analysisContext} onBack={() => navigateTo('contextSelection')} onAnalysisStart={(media) => { setMediaForAnalysis(media); navigateTo('processing'); }} onNavigateToLivePractice={() => navigateTo('livePracticeSetup')} /><AppOverlays/></>;
+            case 'processing': return <ProcessingPage media={mediaForAnalysis} context={analysisContext} history={analysisHistory} onAnalysisComplete={handleAnalysisComplete} onAnalysisError={(err) => { setAnalysisError(err); }} onRetry={() => { setAnalysisError(null); navigateTo('processing'); }} onBackToUpload={() => navigateTo('upload')} error={analysisError} />;
+            case 'analysisResult': return <><AnalysisResultPage user={user} report={analysisResult} media={mediaForAnalysis} sessionGains={lastSessionGains} onBackToDashboard={() => navigateTo('dashboard')} onNavigateToNewAnalysis={() => navigateTo('contextSelection')} onNavigateToLivePracticeSetup={() => navigateTo('livePracticeSetup')} onNavigateToProgress={() => navigateTo('progress')} /><AppOverlays/></>;
+            case 'livePracticeSetup': return <><LivePracticeSetupPage onBackToDashboard={() => navigateTo('dashboard')} onStartSession={(topic) => { setLivePracticeTopic(topic); navigateTo('livePracticeSession'); }} initialTopic={initialLiveTopic} /><AppOverlays/></>;
+            case 'livePracticeSession': return <><LivePracticeSessionPage topic={livePracticeTopic} onEndSession={(summary) => { setLiveSessionSummary(summary); }} onBackToDashboard={() => navigateTo('dashboard')} onAnalyzeLiveSession={(audio, context) => { setMediaForAnalysis(audio); setAnalysisContext(context); navigateTo('processing'); }} /><AppOverlays/></>;
+            case 'paymentSuccess': return <PaymentSuccessPage onVerifyPayment={handleVerifyPayment} />;
+            case 'paymentFailed': return <PaymentFailedPage onRetry={() => navigateTo('billing')} onBackToDashboard={() => navigateTo('dashboard')} />;
+        }
+        
+        const commonLayoutProps = {
+            user, history: analysisHistory, subscription: userSubscription, activePage: page as any,
+            onLogout: handleLogout,
+            onNavigateToDashboard: () => navigateTo('dashboard'), onNavigateToHistory: () => navigateTo('history'),
+            onNavigateToGoals: () => navigateTo('goals'), onNavigateToProgress: () => navigateTo('progress'),
+            onNavigateToCourses: () => navigateTo('courses'), onNavigateToResources: () => navigateTo('resources'), onNavigateToProfile: () => navigateTo('profile'),
+            onNavigateToSettings: () => navigateTo('settings'), onNavigateToBilling: () => navigateTo('billing'),
+            onNavigateToReferral: () => navigateTo('referral'),
+            onNavigateToTermsOfService: () => navigateTo('termsOfService'),
+            onNavigateToPrivacyPolicy: () => navigateTo('privacyPolicy'),
+            onNavigateToSecurity: () => navigateTo('security'),
+            onNavigateToContact: () => navigateTo('contact'),
+            onNavigateToCareer: () => navigateTo('career'),
+        };
+
+        const MainContent = () => {
+            switch(page) {
+                case 'dashboard': return <Dashboard user={user} history={analysisHistory} userGoals={userGoals} trackableGoals={trackableGoals} subscription={userSubscription} onViewReport={(report) => { setAnalysisResult(report); setMediaForAnalysis(null); navigateTo('analysisResult'); }} onNavigateToNewAnalysis={() => navigateTo('contextSelection')} onNavigateToLivePractice={(topic) => { setInitialLiveTopic(topic || ''); navigateTo('livePracticeSetup'); }} onNavigateToGoals={() => navigateTo('goals')} onNavigateToBilling={() => navigateTo('billing')} setToast={setToast} />;
+                case 'history': return <HistoryPage history={analysisHistory} onViewReport={(report) => { setAnalysisResult(report); setMediaForAnalysis(null); navigateTo('analysisResult'); }} onNavigateToNewAnalysis={() => navigateTo('contextSelection')} />;
+                case 'goals': return <GoalsPage goals={trackableGoals} onUpdateGoals={(goals) => setTrackableGoals(goals)} history={analysisHistory} />;
+                case 'courses': return <CoursesPage />;
+                case 'progress': return <ProgressPage user={user} history={analysisHistory} userGoals={userGoals} onNavigateToGoals={() => navigateTo('goals')} onViewReport={(report) => { setAnalysisResult(report); setMediaForAnalysis(null); navigateTo('analysisResult'); }} onNavigateToNewAnalysis={() => navigateTo('contextSelection')} />;
+                case 'resources': return <ResourcesPage onNavigateToResource={(id) => { setSelectedResource(id); navigateTo('resourceArticle'); }} />;
+                case 'resourceArticle': return <ResourceArticlePage articleId={selectedResource} onBack={() => navigateTo('resources')} />;
+                case 'profile': return <ProfilePage user={user} onUpdateUser={handleUpdateUser} />;
+                case 'settings': return <SettingsPage user={user} history={analysisHistory} setToast={setToast} />;
+                case 'billing': return <BillingPage user={user} subscription={userSubscription} onSubscriptionUpdate={handleSubscriptionUpdate} onNavigateToPaymentSuccess={(ref, plan, amt) => { setPaymentInfo({ reference: ref, plan, amount: amt }); navigateTo('paymentSuccess'); }} onNavigateToPaymentFailed={() => navigateTo('paymentFailed')} onBackToDashboard={() => navigateTo('dashboard')} setToast={setToast} />;
+                case 'referral': return <ReferralPage user={user} setToast={setToast} onUpdateUser={handleUpdateUser} />;
+                case 'components': return <ComponentsPage />;
+                case 'termsOfService': return <TermsOfServicePage onBack={() => navigateTo('dashboard')} />;
+                case 'privacyPolicy': return <PrivacyPolicyPage onBack={() => navigateTo('dashboard')} />;
+                case 'security': return <SecurityPage onBack={() => navigateTo('dashboard')} />;
+                case 'contact': return <ContactPage onBack={() => navigateTo('dashboard')} />;
+                case 'career': return <CareerPage onBack={() => navigateTo('dashboard')} />;
+                default: return <div>Page not found</div>;
+            }
+        };
+
+        return (
+            <MainLayout {...commonLayoutProps}>
+                <MainContent />
+            </MainLayout>
+        );
     };
-    
-    if (isLoading) {
-        return <div className="flex h-screen w-full items-center justify-center bg-background-light dark:bg-background-dark"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
-    }
 
-    if (!user && (page !== 'landing' && page !== 'login' && page !== 'signup' && page !== 'forgotPassword' && page !== 'termsOfService' && page !== 'privacyPolicy' && page !== 'security' && page !== 'contact' && page !== 'career')) {
-        return <LandingPage onNavigateToLogin={() => navigateTo('login')} onNavigateToSignUp={() => navigateTo('signup')} onNavigateToTermsOfService={() => navigateTo('termsOfService')} onNavigateToPrivacyPolicy={() => navigateTo('privacyPolicy')} onNavigateToSecurity={() => navigateTo('security')} onNavigateToContact={() => navigateTo('contact')} onNavigateToCareer={() => navigateTo('career')} />;
-    }
-
-    return (
-        <>
-            {mainLayoutPages.includes(page) && user ? (
-                <MainLayout 
-                    user={user}
-                    history={analysisHistory}
-                    subscription={userSubscription}
-                    activePage={page as any} 
-                    onLogout={handleLogout}
-                    onNavigateToDashboard={() => navigateTo('dashboard')}
-                    onNavigateToHistory={() => navigateTo('history')}
-                    onNavigateToGoals={() => navigateTo('goals')}
-                    onNavigateToProgress={() => navigateTo('progress')}
-                    onNavigateToResources={() => navigateTo('resources')}
-                    onNavigateToProfile={() => navigateTo('profile')}
-                    onNavigateToSettings={() => navigateTo('settings')}
-                    onNavigateToBilling={() => navigateTo('billing')}
-                    onNavigateToReferral={() => navigateTo('referral')}
-                    onNavigateToTermsOfService={() => navigateTo('termsOfService')}
-                    onNavigateToPrivacyPolicy={() => navigateTo('privacyPolicy')}
-                    onNavigateToSecurity={() => navigateTo('security')}
-                    onNavigateToContact={() => navigateTo('contact')}
-                    onNavigateToCareer={() => navigateTo('career')}
-                >
-                    {page === 'dashboard' && <Dashboard user={user} history={analysisHistory} userGoals={userGoals} trackableGoals={trackableGoals} subscription={userSubscription} onViewReport={handleViewReport} onNavigateToNewAnalysis={() => navigateTo('newAnalysis')} onNavigateToLivePractice={(topic) => { setInitialLiveTopic(topic || ''); navigateTo('livePracticeSetup'); }} onNavigateToGoals={() => navigateTo('goals')} onNavigateToBilling={() => navigateTo('billing')} setToast={setToast} />}
-                    {page === 'history' && <HistoryPage history={analysisHistory} onViewReport={handleViewReport} onNavigateToNewAnalysis={() => navigateTo('newAnalysis')} />}
-                    {page === 'goals' && <GoalsPage goals={trackableGoals} onUpdateGoals={handleTrackableGoalsUpdate} history={analysisHistory} />}
-                    {page === 'progress' && <ProgressPage user={user} history={analysisHistory} userGoals={userGoals} onViewReport={handleViewReport} onNavigateToGoals={() => navigateTo('goals')} onNavigateToNewAnalysis={() => navigateTo('newAnalysis')} />}
-                    {page === 'resources' && <ResourcesPage onNavigateToResource={(id) => { setSelectedResource(id); navigateTo('resourceArticle'); }} />}
-                    {page === 'profile' && <ProfilePage user={user} onUpdateUser={handleUserUpdate} />}
-                    {page === 'settings' && <SettingsPage user={user} history={analysisHistory} setToast={setToast} />}
-                    {page === 'components' && <ComponentsPage />}
-                    {page === 'billing' && <BillingPage user={user} subscription={userSubscription} onSubscriptionUpdate={handleSubscriptionUpdate} onNavigateToPaymentSuccess={(ref, plan, amount) => { setPaymentInfo({ reference: ref, plan, amount }); navigateTo('paymentSuccess'); }} onNavigateToPaymentFailed={() => navigateTo('paymentFailed')} onBackToDashboard={() => navigateTo('dashboard')} setToast={setToast} />}
-                    {page === 'referral' && <ReferralPage user={user} setToast={setToast} />}
-                </MainLayout>
-            ) : (
-                renderPage()
-            )}
-            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-            <AchievementModal isOpen={showAchievementModal} onClose={() => setShowAchievementModal(false)} onNavigateToProgress={() => { setShowAchievementModal(false); navigateTo('progress'); }} />
-            {user && <SupportButton />}
-        </>
-    );
+    return <>{renderPage()}</>;
 };
 
 export default App;

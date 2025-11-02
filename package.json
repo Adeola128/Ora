@@ -13,8 +13,8 @@
     "react-transition-group": "4.4.5",
     "@google/genai": "latest",
     "@supabase/supabase-js": "2",
-    "react-dom": "^19.2.0",
-    "nodemailer": "^7.0.10"
+    "nodemailer": "^7.0.10",
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

@@ -260,7 +260,7 @@ const LivePracticeSetupPage: React.FC<LivePracticeSetupPageProps> = ({ onBackToD
                 <div className="mt-10 pt-6 border-t border-border-light dark:border-border-dark flex flex-col md:flex-row items-center justify-end gap-4">
                     <button onClick={onBackToDashboard} className="px-6 py-3 rounded-lg text-sm font-semibold bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">Back to Dashboard</button>
                     <button className="px-6 py-3 rounded-lg text-sm font-semibold text-primary border border-primary hover:bg-primary-50 dark:hover:bg-primary-900/40 transition-colors">Save as Preset</button>
-                    <button onClick={handleStartSession} className="px-8 py-3 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary-700 transition-colors shadow-lg shadow-primary/30">Start Live Practice</button>
+                    <button onClick={handleStartSession} className="px-8 py-3 rounded-lg text-sm font-semibold text-white bg-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/30">Start Live Practice</button>
                 </div>
             </div>
         </div>

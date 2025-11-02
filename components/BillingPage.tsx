@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase, toCamelCase } from '../lib/supabaseClient';
 import { User, UserSubscription, SubscriptionPlan, Payment } from '../types';
@@ -186,32 +185,57 @@ const BillingPage: React.FC<BillingPageProps> = ({ user, subscription, onSubscri
                 </header>
                 
                 {/* Current Subscription Section */}
-                <section className="max-w-4xl mx-auto bg-card-light dark:bg-card-dark p-6 sm:p-8 rounded-xl shadow-md border border-border-light dark:border-border-dark">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="md:col-span-2">
+                 <section className="max-w-4xl mx-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Your Plan Card */}
+                        <div className="bg-card-light dark:bg-card-dark p-6 sm:p-8 rounded-xl shadow-md border border-border-light dark:border-border-dark flex flex-col">
                             <h2 className="text-xl font-bold text-text-light dark:text-text-dark">Your Plan</h2>
-                            <div className="flex items-baseline gap-3 mt-2">
+                            <div className="flex items-baseline gap-3 my-4">
                                 <span className={`px-3 py-1 rounded-full text-sm font-bold ${isTrial ? 'bg-mustard/20 text-mustard' : 'bg-primary/10 text-primary'}`}>
                                     {currentPlanDetails?.name} {isTrial && '(Trial)'}
                                 </span>
-                                <p className="text-text-muted-light dark:text-text-muted-dark">{getPlanDateInfo()}</p>
                             </div>
-                            <div className="mt-6 pt-6 border-t border-border-light dark:border-border-dark">
-                                <h3 className="font-semibold text-text-light dark:text-text-dark">Payment Method</h3>
-                                <div className="flex items-center gap-3 mt-2">
-                                    <img src="https://js.paystack.co/v1/assets/images/paystack-logo-primary.svg" alt="Paystack" className="h-5" />
-                                    <p className="text-text-muted-light dark:text-text-muted-dark">Visa ending in **** 1234</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex flex-col gap-3 justify-center">
-                            <button className="h-11 px-6 text-sm font-bold text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors">Update Payment Method</button>
+                            <p className="text-text-muted-light dark:text-text-muted-dark text-sm mb-4">{getPlanDateInfo()}</p>
+                            <ul className="space-y-2 text-sm text-text-muted-light dark:text-text-muted-dark flex-grow">
+                                {(currentPlanDetails?.features || []).map(feature => (
+                                    <li key={feature} className="flex items-start gap-3">
+                                        <span className="material-symbols-outlined mt-0.5 text-playful_green text-lg">check_circle</span>
+                                        <span>{feature}</span>
+                                    </li>
+                                ))}
+                            </ul>
                             {currentPlanId !== 'free' && (
-                                <button onClick={handleCancelSubscription} className="h-11 px-6 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/40 rounded-lg transition-colors">Cancel Subscription</button>
+                                <button onClick={handleCancelSubscription} className="mt-6 w-full h-11 px-6 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/40 rounded-lg transition-colors border border-red-200 dark:border-red-900/50">
+                                    Cancel Subscription
+                                </button>
                             )}
+                        </div>
+
+                        {/* Payment Method Card */}
+                        <div className="bg-card-light dark:bg-card-dark p-6 sm:p-8 rounded-xl shadow-md border border-border-light dark:border-border-dark flex flex-col justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-text-light dark:text-text-dark">Payment Method</h2>
+                                <div className="flex items-center gap-4 my-4 p-4 bg-background-light dark:bg-background-dark rounded-lg border border-border-light dark:border-border-dark">
+                                    <img src="https://js.paystack.co/v1/assets/images/paystack-logo-primary.svg" alt="Paystack" className="h-6" />
+                                    <div>
+                                        <p className="font-semibold text-text-light dark:text-text-dark">Visa Card</p>
+                                        <p className="text-sm text-text-muted-light dark:text-text-muted-dark">ending in **** 1234</p>
+                                    </div>
+                                </div>
+                                <p className="text-sm text-text-muted-light dark:text-text-muted-dark">
+                                    Your payments are securely processed by our PCI-compliant partner.
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setToast({ message: "This functionality is coming soon!", type: 'info' })}
+                                className="mt-6 w-full h-11 px-6 text-sm font-bold text-primary border border-primary rounded-lg hover:bg-primary/10 transition-colors"
+                            >
+                                Update Payment Method
+                            </button>
                         </div>
                     </div>
                 </section>
+
 
                 {/* Plan Selection Section */}
                 <section className="max-w-6xl mx-auto mt-16">
@@ -224,7 +248,6 @@ const BillingPage: React.FC<BillingPageProps> = ({ user, subscription, onSubscri
                         {plans.map((plan) => {
                             const isCurrentPlan = plan.planId === currentPlanId;
                             const isProcessingThisPlan = processingPlan === plan.planId;
-                            const isUpgrade = (currentPlanId === 'free' && plan.planId !== 'free') || (currentPlanId === 'pro' && plan.planId === 'premium');
                             
                             return (
                                 <div 

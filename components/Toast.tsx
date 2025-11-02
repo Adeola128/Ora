@@ -81,7 +81,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose, duration = 5000 }
         <div
             role="alert"
             aria-live="assertive"
-            className={`toast-container fixed top-5 right-5 w-full max-w-sm rounded-xl shadow-2xl border backdrop-blur-md z-50 flex items-start gap-4 overflow-hidden
+            className={`toast-container fixed top-5 left-5 right-5 sm:left-auto sm:w-full sm:max-w-sm rounded-xl shadow-2xl border backdrop-blur-md z-50 flex items-start gap-4 overflow-hidden
                 ${theme.container}
                 ${isExiting ? 'animate-slide-out-to-right' : 'animate-slide-in-from-right'}`
             }

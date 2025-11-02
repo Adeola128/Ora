@@ -1,13 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { GoogleGenAI } from '@google/genai';
 import { User, AnalysisReport, UserGoals, Achievement, UserSubscription, TrackableGoal } from '../types';
 import { calculateAchievements, calculateLevelAndXP, calculateStreak } from './lib/gamification';
 import AchievementBadge from './AchievementBadge';
-import { supabase } from '../lib/supabaseClient';
-
-// This is a temporary fix to make the linter happy.
-// In a real app, you would initialize this once in a client/config file.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || 'placeholder' });
+import { supabase, ai, isGeminiConfigured } from '../lib/supabaseClient';
 
 
 interface DashboardProps {
@@ -313,6 +308,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, history, userGoals, trackab
 
     useEffect(() => {
         const fetchTip = async () => {
+            if (!isGeminiConfigured) {
+                setIsTipLoading(false);
+                return;
+            }
+
             setIsTipLoading(true);
             try {
                 const latestReport = history.length > 0 ? history[0] : null;
@@ -333,7 +333,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, history, userGoals, trackab
                     setOwlTip(response.text.replace(/"/g, ''));
                 }
             } catch (error) { 
-                console.error("Failed to fetch owl tip, using default:", error);
+                // Silently fail and use the default tip.
             } finally {
                 setIsTipLoading(false);
             }
