@@ -98,12 +98,38 @@ CREATE TRIGGER handle_updated_at
 -- Function and Trigger to create a profile on new user sign-up
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  retries INT := 5;
 BEGIN
-  INSERT INTO public.profiles (id, name, avatar_url, referral_code)
-  VALUES (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url', generate_referral_code());
+  -- Loop to handle potential referral_code collisions, which can happen in a race condition.
+  FOR i IN 1..retries LOOP
+    BEGIN
+      -- Attempt to insert the new profile.
+      -- Use COALESCE to gracefully handle missing name from OAuth providers, falling back to the email.
+      INSERT INTO public.profiles (id, name, avatar_url, referral_code)
+      VALUES (
+        new.id,
+        COALESCE(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', SPLIT_PART(new.email, '@', 1)),
+        new.raw_user_meta_data->>'avatar_url',
+        generate_referral_code()
+      );
+      -- If the insert succeeds, exit the function.
+      RETURN new;
+    EXCEPTION
+      -- Catch a unique_violation, which is likely on the referral_code.
+      WHEN unique_violation THEN
+        -- If this was the last retry, re-raise the exception to fail the trigger.
+        IF i = retries THEN
+          RAISE;
+        END IF;
+        -- Log a notice and the loop will automatically retry.
+        RAISE NOTICE 'Referral code collision, retrying... (Attempt %)', i;
+    END;
+  END LOOP;
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
 
 -- Drop the trigger first to ensure idempotency, then re-create it.
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
