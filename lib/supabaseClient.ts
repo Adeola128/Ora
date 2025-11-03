@@ -63,7 +63,7 @@ BEGIN
   END LOOP;
   RETURN new_code;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 --------------------------------------------------------------------------------
 
@@ -128,7 +128,7 @@ BEGIN
   END LOOP;
   RETURN new;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 
 -- Drop the trigger first to ensure idempotency, then re-create it.
@@ -183,7 +183,7 @@ BEGIN
     -- In a real app, you might queue another job here to award points/rewards.
   END IF;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- RPC to generate a referral code if one doesn't exist for a user.
 CREATE OR REPLACE FUNCTION public.ensure_referral_code()
@@ -205,7 +205,7 @@ BEGIN
 
   RETURN v_referral_code;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
 
 --------------------------------------------------------------------------------
@@ -253,7 +253,7 @@ BEGIN
   
   RETURN result;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 */
 
