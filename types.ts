@@ -221,3 +221,9 @@ export interface NotificationSettings {
     createdAt?: string;
     updatedAt?: string;
 }
+
+// Type for Google GenAI Blob, to avoid import issues.
+export interface GenAIBlob {
+    data: string; // base64 encoded string
+    mimeType: string;
+}

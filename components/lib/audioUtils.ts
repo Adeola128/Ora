@@ -1,4 +1,4 @@
-import { Blob } from '@google/genai';
+import { GenAIBlob } from '../../types';
 
 /**
  * Decodes a base64 string into a Uint8Array.
@@ -51,7 +51,7 @@ export async function decodeAudioData(
 /**
  * Creates a Gemini API-compatible Blob from microphone audio data.
  */
-export function createBlob(data: Float32Array): Blob {
+export function createBlob(data: Float32Array): GenAIBlob {
     const l = data.length;
     const int16 = new Int16Array(l);
     for (let i = 0; i < l; i++) {
@@ -66,7 +66,7 @@ export function createBlob(data: Float32Array): Blob {
 /**
  * Converts a Blob object to a base64 encoded string, stripping the data URL prefix.
  */
-export const blobToBase64 = (blob: Blob): Promise<string> => {
+export const blobToBase64 = (blob: globalThis.Blob): Promise<string> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
 
@@ -10,7 +11,7 @@ interface FeedbackDisplayProps {
     feedbackCycleProgress: number;
     pitchVariation: number;
     tone: string;
-    bodyLanguage: {
+    bodyLanguage?: {
         posture: string;
         gestures: string;
         eyeContact: string;
@@ -118,7 +119,7 @@ const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({ wpm, volume, fillerWo
                 return () => clearTimeout(timer);
             }
         }
-    }, [feedbackTips]);
+    }, [feedbackTips, newestTipId]);
 
 
     return (
@@ -161,14 +162,16 @@ const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({ wpm, volume, fillerWo
                 </div>
             </div>
 
-            <div className="bg-white/5 p-3 rounded-lg">
-                <h3 className="text-xs font-bold text-text-muted-dark uppercase tracking-wider mb-2">Body Language</h3>
-                <div className="grid grid-cols-3 gap-2">
-                    <BodyLanguageMetric icon="accessibility_new" label="Posture" value={bodyLanguage.posture} />
-                    <BodyLanguageMetric icon="waving_hand" label="Gestures" value={bodyLanguage.gestures} />
-                    <BodyLanguageMetric icon="visibility" label="Eye Contact" value={bodyLanguage.eyeContact} />
+            {bodyLanguage && (
+                <div className="bg-white/5 p-3 rounded-lg">
+                    <h3 className="text-xs font-bold text-text-muted-dark uppercase tracking-wider mb-2">Body Language</h3>
+                    <div className="grid grid-cols-3 gap-2">
+                        <BodyLanguageMetric icon="accessibility_new" label="Posture" value={bodyLanguage.posture} />
+                        <BodyLanguageMetric icon="waving_hand" label="Gestures" value={bodyLanguage.gestures} />
+                        <BodyLanguageMetric icon="visibility" label="Eye Contact" value={bodyLanguage.eyeContact} />
+                    </div>
                 </div>
-            </div>
+            )}
 
             <FillerWordTracker fillerWordCount={fillerWordCount} />
             
