@@ -38,6 +38,53 @@ const OfflineBanner: React.FC = () => (
     </div>
 );
 
+const NavDropdown: React.FC<{
+    label: string;
+    items: { id: string; label: string; action: () => void; icon: string }[];
+    activePage: string;
+}> = ({ label, items, activePage }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const isGroupActive = items.some(item => item.id === activePage);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+    
+    return (
+        <div ref={menuRef} className="relative h-full flex items-center">
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={`flex h-full cursor-pointer items-center border-b-4 px-4 gap-1 transition-all duration-200 ${isGroupActive ? 'border-primary bg-primary/10' : 'border-transparent text-text-secondary-light hover:text-text-primary-light dark:text-text-secondary-dark dark:hover:text-text-primary-dark hover:bg-primary/5'}`}
+            >
+                <p className={`font-heading font-bold ${isGroupActive ? 'text-teal-600 dark:text-teal-300' : ''}`}>{label}</p>
+                 <span className={`material-symbols-outlined !text-base transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>expand_more</span>
+            </button>
+            {isOpen && (
+                 <div className="absolute top-full left-0 mt-2 w-56 bg-card-light dark:bg-card-dark rounded-xl shadow-lg border border-border-light dark:border-border-dark animate-fade-in-up-small z-20 overflow-hidden p-2">
+                    {items.map(item => (
+                        <a 
+                            key={item.id} 
+                            onClick={() => { item.action(); setIsOpen(false); }} 
+                            className={`flex items-center gap-3 w-full px-3 py-2 text-sm rounded-lg cursor-pointer ${activePage === item.id ? 'bg-primary/10 text-primary font-semibold' : 'text-text-light dark:text-text-dark hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                        >
+                            <span className="material-symbols-outlined text-base">{item.icon}</span>
+                            <span>{item.label}</span>
+                        </a>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+
 const MainLayout: React.FC<MainLayoutProps> = ({ 
     user, 
     history,
@@ -66,25 +113,30 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 }) => {
     const [isProfileMenuOpen, setProfileMenuOpen] = useState(false);
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
+    const profileMenuRef = useRef<HTMLDivElement>(null);
+    const mobileMenuRef = useRef<HTMLDivElement>(null);
 
     const streak = calculateStreak(history);
     const achievements = calculateAchievements(history);
     const { totalXp } = calculateLevelAndXP(history, achievements);
 
-    const navItems = [
-        { id: 'dashboard', label: 'Dashboard', action: onNavigateToDashboard, icon: 'dashboard' },
+    const trackItems = [
         { id: 'history', label: 'History', action: onNavigateToHistory, icon: 'history' },
         { id: 'progress', label: 'Progress', action: onNavigateToProgress, icon: 'trending_up' },
         { id: 'goals', label: 'Goals', action: onNavigateToGoals, icon: 'flag' },
+    ];
+
+    const learnItems = [
         { id: 'courses', label: 'Courses', action: onNavigateToCourses, icon: 'smart_display' },
         { id: 'resources', label: 'Resources', action: onNavigateToResources, icon: 'school' },
     ];
     
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+            if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
                 setProfileMenuOpen(false);
+            }
+             if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
                 setMobileMenuOpen(false);
             }
         };
@@ -202,7 +254,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                 {isOffline && <OfflineBanner />}
                 <SubscriptionStatusBanner />
                 <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-10">
-                    <a href="#" className="flex items-center gap-3" aria-label="Oratora Home">
+                    <a href="#" onClick={onNavigateToDashboard} className="flex items-center gap-3" aria-label="Oratora Home">
                         <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
                             <path d="M16 28C22.6274 28 28 22.6274 28 16C28 9.37258 22.6274 4 16 4" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
                             <path d="M16 24C19.9298 24 23.141 21.412 24 18" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
@@ -211,11 +263,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                         <span className="font-heading text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">Oratora</span>
                     </a>
                     <nav className="hidden h-full items-center gap-2 lg:flex">
-                        {navItems.map(item => (
-                            <a key={item.id} onClick={item.action} className={`flex h-full cursor-pointer items-center border-b-4 px-4 transition-all duration-200 ${activePage === item.id ? 'border-primary bg-primary/10' : 'border-transparent text-text-secondary-light hover:text-text-primary-light dark:text-text-secondary-dark dark:hover:text-text-primary-dark hover:bg-primary/5'}`}>
-                                <p className={`font-heading font-bold ${activePage === item.id ? 'text-teal-600 dark:text-teal-300' : ''}`}>{item.label}</p>
-                            </a>
-                        ))}
+                        <a onClick={onNavigateToDashboard} className={`flex h-full cursor-pointer items-center border-b-4 px-4 transition-all duration-200 ${activePage === 'dashboard' ? 'border-primary bg-primary/10' : 'border-transparent text-text-secondary-light hover:text-text-primary-light dark:text-text-secondary-dark dark:hover:text-text-primary-dark hover:bg-primary/5'}`}>
+                            <p className={`font-heading font-bold ${activePage === 'dashboard' ? 'text-teal-600 dark:text-teal-300' : ''}`}>Dashboard</p>
+                        </a>
+                        <NavDropdown label="Track" items={trackItems} activePage={activePage} />
+                        <NavDropdown label="Learn" items={learnItems} activePage={activePage} />
                     </nav>
                     <div className="hidden items-center gap-4 sm:flex">
                         {subscription?.plan === 'free' && subscription.status !== 'trialing' && (
@@ -229,7 +281,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                             <span className="material-symbols-outlined !text-base">workspace_premium</span>
                             <p className="text-sm font-bold">{totalXp.toLocaleString()}</p>
                         </div>
-                        <div className="relative" ref={menuRef}>
+                        <div className="relative" ref={profileMenuRef}>
                             <div onClick={() => setProfileMenuOpen(!isProfileMenuOpen)} className="aspect-square size-12 rounded-full bg-cover bg-center cursor-pointer ring-2 ring-offset-2 ring-offset-background-light dark:ring-offset-background-dark ring-transparent hover:ring-primary transition-all" style={{backgroundImage: `url(${user?.avatarUrl})`}} />
                              {isProfileMenuOpen && (
                                 <div className="absolute top-full right-0 mt-2 w-56 bg-card-light dark:bg-card-dark rounded-xl shadow-lg border border-border-light dark:border-border-dark animate-fade-in-up-small z-20 overflow-hidden">
@@ -255,22 +307,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                                                 <span className="material-symbols-outlined text-base">install_desktop</span> Install Oratora
                                             </a>
                                         )}
-                                        <a onClick={() => { onNavigateToCareer(); setProfileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer">
-                                            <span className="material-symbols-outlined text-base">business_center</span> Careers
-                                        </a>
-                                        <a onClick={() => { onNavigateToContact(); setProfileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer">
-                                            <span className="material-symbols-outlined text-base">contact_support</span> Contact
-                                        </a>
-                                        <div className="h-px bg-border-light dark:bg-border-dark my-1"></div>
-                                        <a onClick={() => { onNavigateToTermsOfService(); setProfileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer">
-                                            <span className="material-symbols-outlined text-base">gavel</span> Terms of Service
-                                        </a>
-                                        <a onClick={() => { onNavigateToPrivacyPolicy(); setProfileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer">
-                                            <span className="material-symbols-outlined text-base">privacy_tip</span> Privacy Policy
-                                        </a>
-                                        <a onClick={() => { onNavigateToSecurity(); setProfileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer">
-                                            <span className="material-symbols-outlined text-base">security</span> Security
-                                        </a>
                                     </div>
                                     <div className="h-px bg-border-light dark:bg-border-dark"></div>
                                     <div className="p-2">
@@ -283,13 +319,27 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                         </div>
                     </div>
                      {/* Hamburger for mobile */}
-                    <div className="lg:hidden" ref={menuRef}>
+                    <div className="lg:hidden" ref={mobileMenuRef}>
                         <button onClick={() => setMobileMenuOpen(!isMobileMenuOpen)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                             <span className="material-symbols-outlined">menu</span>
                         </button>
                          {isMobileMenuOpen && (
                             <div className="absolute top-full right-4 mt-2 w-64 bg-card-light dark:bg-card-dark rounded-xl shadow-lg border border-border-light dark:border-border-dark animate-fade-in-up-small z-20 p-2">
-                                {navItems.map(item => (
+                                 <a onClick={() => { onNavigateToDashboard(); setMobileMenuOpen(false); }} className={`flex items-center gap-3 px-4 py-3 text-sm rounded-lg cursor-pointer ${activePage === 'dashboard' ? 'bg-primary/10 text-primary font-bold' : 'text-text-light dark:text-text-dark'}`}>
+                                    <span className="material-symbols-outlined text-base">dashboard</span>
+                                    Dashboard
+                                </a>
+                                <div className="h-px bg-border-light dark:bg-border-dark my-2"></div>
+                                <p className="px-4 py-1 text-xs font-bold text-text-muted-light dark:text-text-muted-dark">TRACK</p>
+                                {trackItems.map(item => (
+                                     <a key={item.id} onClick={() => { item.action(); setMobileMenuOpen(false); }} className={`flex items-center gap-3 px-4 py-3 text-sm rounded-lg cursor-pointer ${activePage === item.id ? 'bg-primary/10 text-primary font-bold' : 'text-text-light dark:text-text-dark'}`}>
+                                        <span className="material-symbols-outlined text-base">{item.icon}</span>
+                                        {item.label}
+                                    </a>
+                                ))}
+                                 <div className="h-px bg-border-light dark:bg-border-dark my-2"></div>
+                                <p className="px-4 py-1 text-xs font-bold text-text-muted-light dark:text-text-muted-dark">LEARN</p>
+                                {learnItems.map(item => (
                                      <a key={item.id} onClick={() => { item.action(); setMobileMenuOpen(false); }} className={`flex items-center gap-3 px-4 py-3 text-sm rounded-lg cursor-pointer ${activePage === item.id ? 'bg-primary/10 text-primary font-bold' : 'text-text-light dark:text-text-dark'}`}>
                                         <span className="material-symbols-outlined text-base">{item.icon}</span>
                                         {item.label}
@@ -302,24 +352,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                                  <a onClick={() => { onNavigateToBilling(); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer rounded-lg">
                                     <span className="material-symbols-outlined text-base">credit_card</span> Billing
                                 </a>
-                                <a onClick={() => { onNavigateToReferral(); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer rounded-lg">
-                                    <span className="material-symbols-outlined text-base">redeem</span> Refer & Earn
-                                </a>
-                                <a onClick={() => { onNavigateToSettings(); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer rounded-lg">
-                                    <span className="material-symbols-outlined text-base">settings</span> Settings
-                                </a>
                                 {installPromptEvent && (
                                      <a onClick={() => { onInstall(); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer rounded-lg">
                                         <span className="material-symbols-outlined text-base">install_desktop</span> Install Oratora
                                     </a>
                                 )}
-                                 <a onClick={() => { onNavigateToCareer(); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer rounded-lg">
-                                    <span className="material-symbols-outlined text-base">business_center</span> Careers
-                                </a>
-                                <a onClick={() => { onNavigateToContact(); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer rounded-lg">
-                                    <span className="material-symbols-outlined text-base">contact_support</span> Contact
-                                </a>
-                                <div className="h-px bg-border-light dark:bg-border-dark my-2"></div>
+                                 <div className="h-px bg-border-light dark:bg-border-dark my-2"></div>
                                 <a onClick={onLogout} className="flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/40 cursor-pointer rounded-lg">
                                     <span className="material-symbols-outlined text-base">logout</span> Logout
                                 </a>
@@ -331,6 +369,20 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             <main className="flex-1 overflow-y-auto p-4 sm:p-10">
                 {children}
             </main>
+             <footer className="border-t border-border-light dark:border-border-dark bg-background-light dark:bg-card-dark">
+                <div className="mx-auto max-w-7xl px-4 sm:px-10 py-8 text-center sm:text-left">
+                    <div className="sm:flex sm:items-center sm:justify-between">
+                        <p className="text-sm text-text-secondary-light dark:text-text-secondary-dark">© {new Date().getFullYear()} Oratora. All rights reserved.</p>
+                        <div className="flex justify-center mt-4 sm:mt-0 space-x-6">
+                            <a onClick={onNavigateToTermsOfService} className="cursor-pointer text-sm text-text-secondary-light dark:text-text-secondary-dark hover:text-primary transition-colors">Terms</a>
+                            <a onClick={onNavigateToPrivacyPolicy} className="cursor-pointer text-sm text-text-secondary-light dark:text-text-secondary-dark hover:text-primary transition-colors">Privacy</a>
+                            <a onClick={onNavigateToSecurity} className="cursor-pointer text-sm text-text-secondary-light dark:text-text-secondary-dark hover:text-primary transition-colors">Security</a>
+                            <a onClick={onNavigateToContact} className="cursor-pointer text-sm text-text-secondary-light dark:text-text-secondary-dark hover:text-primary transition-colors">Contact</a>
+                            <a onClick={onNavigateToCareer} className="cursor-pointer text-sm text-text-secondary-light dark:text-text-secondary-dark hover:text-primary transition-colors">Careers</a>
+                        </div>
+                    </div>
+                </div>
+            </footer>
         </div>
     );
 };
