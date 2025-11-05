@@ -3,6 +3,7 @@ const URLS_TO_CACHE = [
   '/',
   '/index.html',
   '/index.tsx',
+  '/manifest.json', // Added manifest to cache
   'https://cdn.tailwindcss.com?plugins=forms,container-queries',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&family=Poppins:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;700;800;900&display=swap',
   'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined',
@@ -14,13 +15,13 @@ const URLS_TO_CACHE = [
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 ];
 
-// Install event: cache core assets
+// Install event: cache core application shell assets.
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('Opened cache');
-        // Cache resources individually to be more resilient to network failures
+        // Cache resources individually to be more resilient to network failures.
         const cachePromises = URLS_TO_CACHE.map(url => {
             return cache.add(url).catch(err => {
                 console.warn(`Failed to cache ${url}:`, err);
@@ -28,11 +29,11 @@ self.addEventListener('install', event => {
         });
         return Promise.all(cachePromises);
       })
-      .then(() => self.skipWaiting()) // Activate the new service worker immediately
+      .then(() => self.skipWaiting()) // Force the waiting service worker to become the active service worker.
   );
 });
 
-// Activate event: clean up old caches
+// Activate event: clean up old caches to remove outdated data.
 self.addEventListener('activate', event => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
@@ -45,25 +46,25 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    }).then(() => self.clients.claim()) // Take control of all open clients
+    }).then(() => self.clients.claim()) // Take control of all open clients once activated.
   );
 });
 
 
-// Fetch event: Apply caching strategy
+// Fetch event: Apply caching strategy to serve assets.
 self.addEventListener('fetch', event => {
-  // We only want to cache GET requests.
+  // We only cache GET requests. Other requests (POST, etc.) are passed through.
   if (event.request.method !== 'GET') {
     return;
   }
   
-  // For navigation requests (HTML pages), use a network-first strategy.
-  // This ensures the user gets the latest version of the app shell if online.
+  // Strategy: Network-first for navigation requests (HTML pages).
+  // This ensures the user gets the latest app shell if online, with an offline fallback.
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
         .then(response => {
-          // If the fetch is successful, cache the new response and return it.
+          // If fetch is successful, cache the new response and return it.
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then(cache => {
             cache.put(event.request, responseToCache);
@@ -78,7 +79,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // For all other requests (assets like JS, CSS, fonts), use a cache-first strategy.
+  // Strategy: Cache-first for all other assets (JS, CSS, fonts, etc.).
   // This serves assets from the cache immediately for speed and offline availability.
   event.respondWith(
     caches.match(event.request)
@@ -101,7 +102,7 @@ self.addEventListener('fetch', event => {
 
             caches.open(CACHE_NAME)
               .then(cache => {
-                // Cache the newly fetched response.
+                // Cache the newly fetched response for future requests.
                 cache.put(event.request, responseToCache);
               });
 
@@ -109,7 +110,7 @@ self.addEventListener('fetch', event => {
           }
         ).catch(error => {
             console.log('Fetch failed; error:', error);
-            // Optionally, you could return a fallback offline asset here.
+            // You could optionally return a fallback offline asset here (e.g., a placeholder image).
         });
       })
   );

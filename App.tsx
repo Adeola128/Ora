@@ -122,21 +122,66 @@ const App: React.FC = () => {
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
     const [paymentInfo, setPaymentInfo] = useState<{ reference: string; plan: SubscriptionPlan; amount: number; } | null>(null);
     
+    // PWA & Offline State
+    const [installPromptEvent, setInstallPromptEvent] = useState<any | null>(null);
+    const [isOffline, setIsOffline] = useState(!navigator.onLine);
+    
     const initialAuthCheckCompleted = useRef(false);
+    
+    // --- PWA & Offline Management ---
+    useEffect(() => {
+        // Listen for PWA installation prompt
+        const handleBeforeInstallPrompt = (e: Event) => {
+            e.preventDefault();
+            setInstallPromptEvent(e);
+        };
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+        // Listen for online/offline status changes
+        const handleOffline = () => setIsOffline(true);
+        const handleOnline = () => setIsOffline(false);
+        window.addEventListener('offline', handleOffline);
+        window.addEventListener('online', handleOnline);
+        
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            window.removeEventListener('offline', handleOffline);
+            window.removeEventListener('online', handleOnline);
+        };
+    }, []);
+    
+    const handleInstall = () => {
+        if (installPromptEvent) {
+            installPromptEvent.prompt();
+            installPromptEvent.userChoice.then((choiceResult: { outcome: string }) => {
+                if (choiceResult.outcome === 'accepted') {
+                    setToast({ message: 'Oratora installed successfully!', type: 'success' });
+                }
+                setInstallPromptEvent(null);
+            });
+        }
+    };
+
 
     // --- Data Fetching and Auth Listener ---
     useEffect(() => {
-        // Handle referral codes on initial load
+        // Handle referral codes and PWA shortcuts on initial load
         try {
             const urlParams = new URLSearchParams(window.location.search);
             const refCode = urlParams.get('ref');
             if (refCode) {
                 localStorage.setItem('oratora_ref_code', refCode);
-                // Clean the URL so the ref code isn't visible after load
+            }
+            const action = urlParams.get('action');
+            if (action) {
+                sessionStorage.setItem('oratora_pending_action', action);
+            }
+             // Clean the URL so params aren't visible after load
+            if (refCode || action) {
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         } catch (e) {
-            console.warn("Could not process referral URL parameter.", e);
+            console.warn("Could not process URL parameters.", e);
         }
 
         // A single, robust function to process a session, whether it's the initial one or from a state change.
@@ -239,7 +284,19 @@ const App: React.FC = () => {
                 if (!profile.onboardingCompleted) {
                     setPage('onboarding');
                 } else {
-                    setPage('dashboard');
+                    const pendingAction = sessionStorage.getItem('oratora_pending_action');
+                    if (pendingAction) {
+                        sessionStorage.removeItem('oratora_pending_action');
+                        if (pendingAction === 'new_analysis') {
+                            setPage('contextSelection');
+                        } else if (pendingAction === 'live_practice') {
+                            setPage('livePracticeSetup');
+                        } else {
+                            setPage('dashboard');
+                        }
+                    } else {
+                        setPage('dashboard');
+                    }
                 }
 
             } catch (error) {
@@ -541,7 +598,12 @@ const App: React.FC = () => {
         };
 
         return (
-            <MainLayout {...commonLayoutProps}>
+            <MainLayout 
+                {...commonLayoutProps}
+                isOffline={isOffline}
+                installPromptEvent={installPromptEvent}
+                onInstall={handleInstall}
+            >
                 <MainContent />
             </MainLayout>
         );

@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { User, AnalysisReport, UserSubscription } from '../types';
 import { calculateStreak, calculateLevelAndXP, calculateAchievements } from './lib/gamification';
@@ -28,7 +26,17 @@ interface MainLayoutProps {
     onNavigateToContact: () => void;
     onNavigateToCareer: () => void;
     children: React.ReactNode;
+    isOffline: boolean;
+    installPromptEvent: any | null;
+    onInstall: () => void;
 }
+
+const OfflineBanner: React.FC = () => (
+    <div className="bg-mustard text-black text-center text-sm font-semibold py-1.5 px-4 transition-colors duration-300">
+        <span className="material-symbols-outlined !text-base align-middle mr-1">cloud_off</span>
+        You are currently offline. Some features may be unavailable.
+    </div>
+);
 
 const MainLayout: React.FC<MainLayoutProps> = ({ 
     user, 
@@ -51,7 +59,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     onNavigateToSecurity,
     onNavigateToContact,
     onNavigateToCareer,
-    children 
+    children,
+    isOffline,
+    installPromptEvent,
+    onInstall
 }) => {
     const [isProfileMenuOpen, setProfileMenuOpen] = useState(false);
     const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -188,6 +199,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     return (
         <div className="group/design-root flex min-h-screen w-full flex-col">
             <header className="sticky top-0 z-30 w-full border-b border-border-light dark:border-border-dark bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
+                {isOffline && <OfflineBanner />}
                 <SubscriptionStatusBanner />
                 <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-10">
                     <a href="#" className="flex items-center gap-3" aria-label="Oratora Home">
@@ -238,6 +250,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                                         <a onClick={() => { onNavigateToSettings(); setProfileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer">
                                             <span className="material-symbols-outlined text-base">settings</span> Settings
                                         </a>
+                                        {installPromptEvent && (
+                                            <a onClick={() => { onInstall(); setProfileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer">
+                                                <span className="material-symbols-outlined text-base">install_desktop</span> Install Oratora
+                                            </a>
+                                        )}
                                         <a onClick={() => { onNavigateToCareer(); setProfileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-2 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer">
                                             <span className="material-symbols-outlined text-base">business_center</span> Careers
                                         </a>
@@ -291,6 +308,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                                 <a onClick={() => { onNavigateToSettings(); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer rounded-lg">
                                     <span className="material-symbols-outlined text-base">settings</span> Settings
                                 </a>
+                                {installPromptEvent && (
+                                     <a onClick={() => { onInstall(); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer rounded-lg">
+                                        <span className="material-symbols-outlined text-base">install_desktop</span> Install Oratora
+                                    </a>
+                                )}
                                  <a onClick={() => { onNavigateToCareer(); setMobileMenuOpen(false); }} className="flex items-center gap-3 px-4 py-3 text-sm text-text-light dark:text-text-dark hover:bg-gray-100 dark:hover:bg-gray-800/50 cursor-pointer rounded-lg">
                                     <span className="material-symbols-outlined text-base">business_center</span> Careers
                                 </a>
