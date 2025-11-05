@@ -1,0 +1,22 @@
+{
+  "name": "Oratora - AI Public Speaking Coach",
+  "short_name": "Oratora",
+  "description": "Oratora is an AI-powered public speaking coach that democratizes access to professional speaking training through personalized, context-aware feedback, real-time coaching, and immersive practice environments.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f2321",
+  "theme_color": "#06f9e0",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 32 32'><path d='M16 28C22.6274 28 28 22.6274 28 16C28 9.37258 22.6274 4 16 4' stroke='%2306f9e0' stroke-width='4' stroke-linecap='round' fill='none'/><path d='M16 24C19.9298 24 23.141 21.412 24 18' stroke='%2306f9e0' stroke-width='3' stroke-linecap='round' fill='none'/><path d='M16 20C17.5752 20 18.9664 19.1411 19.6085 18' stroke='%2306f9e0' stroke-width='2.5' stroke-linecap='round' fill='none'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512' viewBox='0 0 32 32'><path d='M16 28C22.6274 28 28 22.6274 28 16C28 9.37258 22.6274 4 16 4' stroke='%2306f9e0' stroke-width='4' stroke-linecap='round' fill='none'/><path d='M16 24C19.9298 24 23.141 21.412 24 18' stroke='%2306f9e0' stroke-width='3' stroke-linecap='round' fill='none'/><path d='M16 20C17.5752 20 18.9664 19.1411 19.6085 18' stroke='%2306f9e0' stroke-width='2.5' stroke-linecap='round' fill='none'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -1,22 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { User, AnalysisReport } from '../types';
+import { User, AnalysisReport, NotificationSettings } from '../types';
 import { sendEmailNotification, generateWeeklySummaryEmail, generatePracticeReminderEmail, generateNewFeatureEmail } from './lib/email';
 
 
 interface SettingsPageProps {
     user: User | null;
     history: AnalysisReport[];
+    notificationSettings: NotificationSettings | null;
+    onUpdateNotificationSettings: (updates: Partial<NotificationSettings>) => void;
     setToast: (toast: { message: string; type: 'success' | 'info' | 'error' } | null) => void;
 }
 
-const SettingsPage: React.FC<SettingsPageProps> = ({ user, history, setToast }) => {
+const SettingsPage: React.FC<SettingsPageProps> = ({ user, history, notificationSettings, onUpdateNotificationSettings, setToast }) => {
     const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
     const [isSendingTest, setIsSendingTest] = useState<string | null>(null);
-    const [notifications, setNotifications] = useState({
-        practiceReminders: true,
-        weeklySummary: true,
-        newFeatures: false,
-    });
 
     useEffect(() => {
         if (theme === 'dark') {
@@ -28,13 +25,14 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, history, setToast }) 
         }
     }, [theme]);
 
-    const handleNotificationChange = (key: keyof typeof notifications) => {
-        setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
+    const handleNotificationChange = (key: keyof Omit<NotificationSettings, 'userId' | 'createdAt' | 'updatedAt'>) => {
+        if (!notificationSettings) return;
+        onUpdateNotificationSettings({ [key]: !notificationSettings[key] });
     };
 
     const handleSendTestEmail = async (type: 'summary' | 'reminder' | 'feature') => {
-        if (!user) {
-            setToast({ message: "User not found.", type: 'error' });
+        if (!user?.email) {
+            setToast({ message: "User email not found.", type: 'error' });
             return;
         }
 
@@ -125,19 +123,19 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ user, history, setToast }) 
                             <ToggleSwitch
                                 label="Practice Reminders"
                                 description="Get notified when it's time for your scheduled practice."
-                                checked={notifications.practiceReminders}
+                                checked={notificationSettings?.practiceReminders ?? true}
                                 onChange={() => handleNotificationChange('practiceReminders')}
                             />
                             <ToggleSwitch
                                 label="Weekly Summary"
                                 description="Receive a weekly email with your progress and insights."
-                                checked={notifications.weeklySummary}
+                                checked={notificationSettings?.weeklySummary ?? true}
                                 onChange={() => handleNotificationChange('weeklySummary')}
                             />
                             <ToggleSwitch
                                 label="New Features"
                                 description="Be the first to know about new features and updates."
-                                checked={notifications.newFeatures}
+                                checked={notificationSettings?.newFeatures ?? false}
                                 onChange={() => handleNotificationChange('newFeatures')}
                             />
                         </div>

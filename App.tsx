@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase, isGeminiConfigured, toCamelCase, toSnakeCase } from './lib/supabaseClient';
@@ -10,7 +9,7 @@ import Dashboard from './components/Dashboard';
 import ContextSelectionPage from './components/ContextSelectionPage';
 import UploadPage from './components/UploadPage';
 import ProcessingPage from './components/ProcessingPage';
-import { User, AnalysisContext, AnalysisReport, UserGoals, Achievement, OnboardingData, TrackableGoal, UserSubscription, SubscriptionPlan, SpeakingContextType } from './types';
+import { User, AnalysisContext, AnalysisReport, UserGoals, Achievement, OnboardingData, TrackableGoal, UserSubscription, SubscriptionPlan, SpeakingContextType, NotificationSettings } from './types';
 import LivePracticeSetupPage from './components/LivePracticeSetupPage';
 import LivePracticeSessionPage from './components/LivePracticeSessionPage';
 import AnalysisResultPage from './components/AnalysisResultPage';
@@ -89,6 +88,13 @@ const defaultUserGoals: UserGoals = {
     },
 };
 
+const defaultNotificationSettings: NotificationSettings = {
+    userId: '',
+    practiceReminders: true,
+    weeklySummary: true,
+    newFeatures: false,
+};
+
 
 const App: React.FC = () => {
     // Auth and User Data State
@@ -97,6 +103,7 @@ const App: React.FC = () => {
     const [analysisHistory, setAnalysisHistory] = useState<AnalysisReport[]>([]);
     const [userGoals, setUserGoals] = useState<UserGoals>(defaultUserGoals);
     const [trackableGoals, setTrackableGoals] = useState<TrackableGoal[]>([]);
+    const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null);
     
     // UI and Transient State
     const [page, setPage] = useState<Page>('landing');
@@ -140,6 +147,7 @@ const App: React.FC = () => {
                 setAnalysisHistory([]);
                 setUserGoals(defaultUserGoals);
                 setTrackableGoals([]);
+                setNotificationSettings(null);
                 setPage('landing');
                 setIsLoading(false);
                 initialAuthCheckCompleted.current = true;
@@ -183,11 +191,12 @@ const App: React.FC = () => {
                     }
 
                     // Since RPC failed, we fetch the rest of the data individually.
-                    const [subscriptionRes, historyRes, goalsRes, trackableGoalsRes] = await Promise.all([
+                    const [subscriptionRes, historyRes, goalsRes, trackableGoalsRes, notificationSettingsRes] = await Promise.all([
                         supabase.from('subscriptions').select('*').eq('id', session.user.id).single(),
                         supabase.from('analysis_reports').select('report').eq('user_id', session.user.id).order('created_at', { ascending: false }),
                         supabase.from('user_goals').select('goals').eq('user_id', session.user.id).single(),
-                        supabase.from('trackable_goals').select('*').eq('user_id', session.user.id).order('created_at')
+                        supabase.from('trackable_goals').select('*').eq('user_id', session.user.id).order('created_at'),
+                        supabase.from('notification_settings').select('*').eq('user_id', session.user.id).single(),
                     ]);
                     
                     // Error handling for individual fetches (log but don't fail the whole process if possible)
@@ -195,6 +204,7 @@ const App: React.FC = () => {
                     if (historyRes.error) console.error("Error fetching history:", historyRes.error);
                     if (goalsRes.error && goalsRes.error.code !== 'PGRST116') console.error("Error fetching user goals:", goalsRes.error);
                     if (trackableGoalsRes.error) console.error("Error fetching trackable goals:", trackableGoalsRes.error);
+                    if (notificationSettingsRes.error && notificationSettingsRes.error.code !== 'PGRST116') console.error("Error fetching notification settings:", notificationSettingsRes.error);
 
                     initialData = {
                         profile: profileData,
@@ -202,6 +212,7 @@ const App: React.FC = () => {
                         analysis_history: historyRes.data ? historyRes.data.map(h => h.report) : [],
                         user_goals: goalsRes.data ? (goalsRes.data as any).goals : null,
                         trackable_goals: trackableGoalsRes.data,
+                        notification_settings: notificationSettingsRes.data,
                     };
                 }
                 
@@ -214,7 +225,8 @@ const App: React.FC = () => {
                     subscription: sub, 
                     analysisHistory: history,
                     userGoals: goals, 
-                    trackableGoals: trackable 
+                    trackableGoals: trackable,
+                    notificationSettings: settings
                 } = toCamelCase<any>(initialData);
 
                 setUser({ ...profile, email: session.user.email! });
@@ -222,6 +234,7 @@ const App: React.FC = () => {
                 setAnalysisHistory(history || []);
                 setUserGoals(goals || defaultUserGoals);
                 setTrackableGoals(trackable || []);
+                setNotificationSettings(settings || { ...defaultNotificationSettings, userId: session.user.id });
                 
                 if (!profile.onboardingCompleted) {
                     setPage('onboarding');
@@ -283,6 +296,30 @@ const App: React.FC = () => {
             }
         }
     }, [setToast]);
+
+    const handleUpdateNotificationSettings = useCallback(async (updates: Partial<NotificationSettings>) => {
+        if (!user) {
+            setToast({ message: 'You must be logged in to update settings.', type: 'error' });
+            return;
+        }
+    
+        // Optimistic UI update
+        const originalSettings = { ...notificationSettings };
+        setNotificationSettings(prev => prev ? { ...prev, ...updates } : null);
+    
+        const { error } = await supabase
+            .from('notification_settings')
+            .update(toSnakeCase(updates))
+            .eq('user_id', user.id);
+        
+        if (error) {
+            // Revert on error
+            setNotificationSettings(originalSettings);
+            setToast({ message: `Failed to update settings: ${error.message}`, type: 'error' });
+        } else {
+            setToast({ message: 'Notification settings updated!', type: 'success' });
+        }
+    }, [user, notificationSettings, setToast]);
 
     const handleOnboardingComplete = useCallback(async (data: OnboardingData) => {
         if (!user) return;
@@ -351,7 +388,7 @@ const App: React.FC = () => {
         for (const goal of newlyCompleted) {
             setToast({ message: `Goal Completed: ${goal.title}!`, type: 'success' });
             // Fix: Added 'to' property to email options to match EmailOptions type.
-            if (user.email) sendEmailNotification({ to: user.email, ...generateGoalCompletionEmail(user, goal) });
+            if (user.email && notificationSettings?.weeklySummary) sendEmailNotification({ to: user.email, ...generateGoalCompletionEmail(user, goal) });
         }
         
         const xpFromReport = Math.round(report.overallScore);
@@ -364,7 +401,7 @@ const App: React.FC = () => {
         }
 
         navigateTo('analysisResult');
-    }, [user, analysisHistory, trackableGoals, setToast]);
+    }, [user, analysisHistory, trackableGoals, setToast, notificationSettings]);
     
     const handleSubscriptionUpdate = useCallback(async (newPlan: SubscriptionPlan) => {
         if (!user) return;
@@ -490,7 +527,7 @@ const App: React.FC = () => {
                 case 'resources': return <ResourcesPage onNavigateToResource={(id) => { setSelectedResource(id); navigateTo('resourceArticle'); }} />;
                 case 'resourceArticle': return <ResourceArticlePage articleId={selectedResource} onBack={() => navigateTo('resources')} />;
                 case 'profile': return <ProfilePage user={user} history={analysisHistory} onUpdateUser={handleUpdateUser} />;
-                case 'settings': return <SettingsPage user={user} history={analysisHistory} setToast={setToast} />;
+                case 'settings': return <SettingsPage user={user} history={analysisHistory} notificationSettings={notificationSettings} onUpdateNotificationSettings={handleUpdateNotificationSettings} setToast={setToast} />;
                 case 'billing': return <BillingPage user={user} subscription={userSubscription} onSubscriptionUpdate={handleSubscriptionUpdate} onNavigateToPaymentSuccess={(ref, plan, amt) => { setPaymentInfo({ reference: ref, plan, amount: amt }); navigateTo('paymentSuccess'); }} onNavigateToPaymentFailed={() => navigateTo('paymentFailed')} onBackToDashboard={() => navigateTo('dashboard')} setToast={setToast} />;
                 case 'referral': return <ReferralPage user={user} setToast={setToast} onUpdateUser={handleUpdateUser} />;
                 case 'components': return <ComponentsPage />;

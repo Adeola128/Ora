@@ -1,4 +1,3 @@
-
 // Fix: Populated with necessary type definitions for the application.
 export interface User {
     id: string; // Corresponds to Supabase auth.users.id (UUID)
@@ -211,4 +210,14 @@ export interface Referral {
         name: string | null;
         avatarUrl: string | null;
     };
+}
+
+// Types for Notification Settings
+export interface NotificationSettings {
+    userId: string;
+    practiceReminders: boolean;
+    weeklySummary: boolean;
+    newFeatures: boolean;
+    createdAt?: string;
+    updatedAt?: string;
 }

@@ -36,7 +36,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 /* 
 ================================================================================
-  SUPABASE DATABASE SETUP SCRIPT (v3 - Referrals Update)
+  SUPABASE DATABASE SETUP SCRIPT (v4 - Notification Settings)
   This script can be run multiple times safely.
   Execute the following SQL queries in your Supabase SQL Editor.
 ================================================================================
@@ -119,7 +119,7 @@ BEGIN
     END;
   END LOOP;
 
-  -- If profile was inserted successfully, create a 21-day trial subscription
+  -- If profile was inserted successfully, create a 21-day trial subscription and notification settings
   IF profile_inserted THEN
     INSERT INTO public.subscriptions (id, plan, status, trial_ends_at)
     VALUES (
@@ -128,6 +128,8 @@ BEGIN
       'trialing',
       NOW() + interval '21 days'
     );
+    -- Insert default notification settings
+    INSERT INTO public.notification_settings (user_id) VALUES (new.id);
   END IF;
 
   RETURN new;
@@ -161,7 +163,32 @@ CREATE INDEX IF NOT EXISTS referrals_referrer_id_idx ON public.referrals (referr
 
 --------------------------------------------------------------------------------
 
--- 4. RPC FUNCTION to process a referral code on sign-up
+-- 4. NOTIFICATION SETTINGS TABLE (NEW)
+CREATE TABLE IF NOT EXISTS public.notification_settings (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  practice_reminders BOOLEAN DEFAULT true,
+  weekly_summary BOOLEAN DEFAULT true,
+  new_features BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS Policies for notification_settings
+ALTER TABLE public.notification_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can manage their own notification settings." ON public.notification_settings;
+CREATE POLICY "Users can manage their own notification settings." ON public.notification_settings FOR ALL USING (auth.uid() = user_id);
+
+-- Trigger to automatically update the `updated_at` column on changes.
+DROP TRIGGER IF EXISTS handle_updated_at ON public.notification_settings;
+CREATE TRIGGER handle_updated_at
+  BEFORE UPDATE ON public.notification_settings
+  FOR EACH ROW
+  EXECUTE PROCEDURE extensions.moddatetime (updated_at);
+
+--------------------------------------------------------------------------------
+
+-- 5. RPC FUNCTIONS
+-- RPC to process a referral code on sign-up
 CREATE OR REPLACE FUNCTION public.process_referral(
   new_user_id UUID,
   p_referral_code TEXT
@@ -211,11 +238,29 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;
 
+-- UPDATE RPC FOR INITIAL DATA FETCHING
+CREATE OR REPLACE FUNCTION public.get_initial_user_data(p_user_id UUID)
+RETURNS JSONB AS $$
+DECLARE
+  result JSONB;
+BEGIN
+  SELECT jsonb_build_object(
+    'profile', (SELECT to_jsonb(p) FROM public.profiles p WHERE p.id = p_user_id),
+    'subscription', (SELECT to_jsonb(s) FROM public.subscriptions s WHERE s.id = p_user_id),
+    'analysis_history', (SELECT COALESCE(jsonb_agg(ar.report ORDER BY ar.created_at DESC), '[]'::jsonb) FROM public.analysis_reports ar WHERE ar.user_id = p_user_id),
+    'user_goals', (SELECT ug.goals FROM public.user_goals ug WHERE ug.user_id = p_user_id),
+    'trackable_goals', (SELECT COALESCE(jsonb_agg(tg ORDER BY tg.created_at), '[]'::jsonb) FROM public.trackable_goals tg WHERE tg.user_id = p_user_id),
+    'notification_settings', (SELECT to_jsonb(ns) FROM public.notification_settings ns WHERE ns.user_id = p_user_id)
+  ) INTO result;
+  
+  RETURN result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
 
 --------------------------------------------------------------------------------
 -- Other tables from previous script (shortened for brevity)...
 --------------------------------------------------------------------------------
-
 CREATE TABLE IF NOT EXISTS public.subscriptions (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   plan TEXT NOT NULL,
@@ -238,27 +283,6 @@ ALTER TABLE public.analysis_reports ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can manage their own reports." ON public.analysis_reports;
 CREATE POLICY "Users can manage their own reports." ON public.analysis_reports FOR ALL USING (auth.uid() = user_id);
 CREATE INDEX IF NOT EXISTS analysis_reports_user_id_idx ON public.analysis_reports (user_id);
-
--- Add other tables like user_goals, trackable_goals, etc. here if they are not already present.
-
--- UPDATE RPC FOR INITIAL DATA FETCHING
-CREATE OR REPLACE FUNCTION public.get_initial_user_data(p_user_id UUID)
-RETURNS JSONB AS $$
-DECLARE
-  result JSONB;
-BEGIN
-  SELECT jsonb_build_object(
-    'profile', (SELECT to_jsonb(p) FROM public.profiles p WHERE p.id = p_user_id),
-    'subscription', (SELECT to_jsonb(s) FROM public.subscriptions s WHERE s.id = p_user_id),
-    'analysis_history', (SELECT COALESCE(jsonb_agg(ar.report ORDER BY ar.created_at DESC), '[]'::jsonb) FROM public.analysis_reports ar WHERE ar.user_id = p_user_id),
-    'user_goals', (SELECT ug.goals FROM public.user_goals ug WHERE ug.user_id = p_user_id),
-    'trackable_goals', (SELECT COALESCE(jsonb_agg(tg ORDER BY tg.created_at), '[]'::jsonb) FROM public.trackable_goals tg WHERE tg.user_id = p_user_id)
-  ) INTO result;
-  
-  RETURN result;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
 */
 
 
