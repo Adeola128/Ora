@@ -1,14 +1,16 @@
 
 import React, { useState, useRef } from 'react';
-import { supabase, toSnakeCase } from '../lib/supabaseClient';
-import { User } from '../types';
+import { supabase } from '../lib/supabaseClient';
+import { User, AnalysisReport } from '../types';
+import { calculateAchievements } from './lib/gamification';
 
 interface ProfilePageProps {
     user: User | null;
+    history: AnalysisReport[];
     onUpdateUser: (updatedUser: Partial<User>) => void;
 }
 
-const ProfilePage: React.FC<ProfilePageProps> = ({ user, onUpdateUser }) => {
+const ProfilePage: React.FC<ProfilePageProps> = ({ user, history, onUpdateUser }) => {
     const [name, setName] = useState(user?.name || '');
     const [email] = useState(user?.email || '');
     const [currentPassword, setCurrentPassword] = useState(''); // Not used in updateUser, but good for UI
@@ -18,6 +20,11 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, onUpdateUser }) => {
     const [isUpdating, setIsUpdating] = useState(false);
     const [passwordMessage, setPasswordMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const totalSessions = history.length;
+    const achievements = calculateAchievements(history);
+    const unlockedAchievements = achievements.filter(ach => ach.unlocked).length;
+    const totalAchievements = achievements.length;
 
     const handleSaveProfile = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -138,11 +145,11 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, onUpdateUser }) => {
                             </div>
                             <div className="flex items-center gap-3 text-sm">
                                 <span className="material-symbols-outlined text-primary">event_repeat</span>
-                                <span className="text-text-muted-light dark:text-text-muted-dark">Total sessions: <strong>12</strong></span>
+                                <span className="text-text-muted-light dark:text-text-muted-dark">Total sessions: <strong>{totalSessions}</strong></span>
                             </div>
                             <div className="flex items-center gap-3 text-sm">
                                 <span className="material-symbols-outlined text-primary">emoji_events</span>
-                                <span className="text-text-muted-light dark:text-text-muted-dark">Achievements: <strong>4 / 12</strong></span>
+                                <span className="text-text-muted-light dark:text-text-muted-dark">Achievements: <strong>{unlockedAchievements} / {totalAchievements}</strong></span>
                             </div>
                         </div>
                     </div>

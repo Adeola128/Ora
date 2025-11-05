@@ -1,5 +1,3 @@
-
-
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI } from '@google/genai';
 
@@ -76,7 +74,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   referral_code TEXT UNIQUE,
-  referred_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL
+  referred_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  paystack_customer_code TEXT -- Stores the customer identifier from Paystack
 );
 
 -- RLS Policies for profiles
@@ -95,17 +94,15 @@ CREATE TRIGGER handle_updated_at
   FOR EACH ROW
   EXECUTE PROCEDURE extensions.moddatetime (updated_at);
 
--- Function and Trigger to create a profile on new user sign-up
+-- Function and Trigger to create a profile and trial subscription on new user sign-up
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
-  retries INT := 5;
+  profile_inserted BOOLEAN := false;
 BEGIN
-  -- Loop to handle potential referral_code collisions, which can happen in a race condition.
-  FOR i IN 1..retries LOOP
+  -- Loop to handle potential referral_code collisions
+  FOR i IN 1..5 LOOP
     BEGIN
-      -- Attempt to insert the new profile.
-      -- Use COALESCE to gracefully handle missing name from OAuth providers, falling back to the email.
       INSERT INTO public.profiles (id, name, avatar_url, referral_code)
       VALUES (
         new.id,
@@ -113,19 +110,26 @@ BEGIN
         new.raw_user_meta_data->>'avatar_url',
         generate_referral_code()
       );
-      -- If the insert succeeds, exit the function.
-      RETURN new;
+      profile_inserted := true;
+      EXIT; -- Exit loop on success
     EXCEPTION
-      -- Catch a unique_violation, which is likely on the referral_code.
       WHEN unique_violation THEN
-        -- If this was the last retry, re-raise the exception to fail the trigger.
-        IF i = retries THEN
-          RAISE;
-        END IF;
-        -- Log a notice and the loop will automatically retry.
+        IF i = 5 THEN RAISE; END IF; -- Fail on last attempt
         RAISE NOTICE 'Referral code collision, retrying... (Attempt %)', i;
     END;
   END LOOP;
+
+  -- If profile was inserted successfully, create a 21-day trial subscription
+  IF profile_inserted THEN
+    INSERT INTO public.subscriptions (id, plan, status, trial_ends_at)
+    VALUES (
+      new.id,
+      'pro', -- Start them on a trial of the Pro plan
+      'trialing',
+      NOW() + interval '21 days'
+    );
+  END IF;
+
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions;

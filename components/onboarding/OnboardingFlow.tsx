@@ -11,6 +11,14 @@ interface OnboardingFlowProps {
     onOnboardingComplete: (data: OnboardingData) => void;
 }
 
+const onboardingTips = [
+    "", // No tip for welcome step (index 0)
+    "Knowing your goals helps me tailor your training perfectly for you.",
+    "Telling me where you'll be speaking helps me give you more relevant feedback.",
+    "Don't worry about being perfect! This just helps me understand your natural style.",
+];
+
+
 const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onOnboardingComplete }) => {
     const [step, setStep] = useState(0); // 0: Welcome, 1: Profile, 2: Context, 3: Baseline
     const [onboardingData, setOnboardingData] = useState<Partial<OnboardingData>>({
@@ -21,7 +29,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onOnboardingCompl
         profilePicture: null,
     });
     
-    const totalStepsOnboarding = 3; // Number of steps after Welcome
+    const totalStepsOnboarding = 3;
 
     const handleNext = () => setStep(prev => prev + 1);
     const handleBack = () => setStep(prev => prev - 1);
@@ -47,29 +55,54 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onOnboardingCompl
         onOnboardingComplete(finalData);
     };
 
-    const handleSkip = () => {
+    const handleSkipFlow = () => {
         const finalData: OnboardingData = {
-            name: user?.name || '',
-            speakingGoals: [],
-            selectedContext: null,
-            baselineRecording: null,
-            profilePicture: null,
+            name: onboardingData.name || user?.name || '',
+            speakingGoals: onboardingData.speakingGoals || [],
+            selectedContext: onboardingData.selectedContext || null,
+            baselineRecording: null, // Ensure baseline is null when skipping
+            profilePicture: onboardingData.profilePicture || null,
         };
         onOnboardingComplete(finalData);
     };
 
     if (step === 0) {
-        return <WelcomeStep onNext={handleNext} onSkip={handleSkip} />;
+        return <WelcomeStep onNext={handleNext} onSkip={handleSkipFlow} />;
     }
 
     return (
-        <div className="flex min-h-screen flex-col items-center bg-background-light dark:bg-background-dark p-4 sm:p-6 lg:p-8 animate-fade-in">
-            <div className="w-full max-w-4xl">
-                <ProgressBar currentStep={step} totalSteps={totalStepsOnboarding} />
-                <main className="mt-12">
-                    {step === 1 && <Step1ProfileSetup user={user} onBack={handleBack} onSubmit={handleProfileSubmit} initialName={onboardingData.name} initialGoals={onboardingData.speakingGoals} />}
-                    {step === 2 && <Step2ContextSelection onBack={handleBack} onSubmit={handleContextSubmit} />}
-                    {step === 3 && <Step3Baseline onBack={handleBack} onSubmit={handleRecordingSubmit} />}
+        <div className="flex min-h-screen w-full bg-background-light dark:bg-background-dark animate-fade-in">
+            <div className="grid w-full grid-cols-1 lg:grid-cols-12">
+                {/* Left Panel: Progress & Mascot */}
+                <div className="hidden lg:col-span-4 lg:flex flex-col items-center justify-center bg-primary/5 dark:bg-primary/10 p-8 border-r border-border-light dark:border-border-dark">
+                    <div className="w-full max-w-xs flex flex-col items-center">
+                        <img 
+                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDyLAOuX9kUdQLlvRE5OB3enzte6l5cKl7gaKodxcy8cCIMmhI4MZh6EordGunqFAh0jTfgkmvnDzDpTcdJ-zq84e_izg5gtvnlClCx-69-ZkkjnKBwuuGSJBhNGS0EW1dab7zCSghgs6AuJetdTK5PwF2cHdvwJ6CyupugcGDrgVb4pMEotDuyNfjAld6K3P_r0Ln-nKjNQwkAQyDtVuHeAUR_8t32WBM3eYEX_vzqtea7oI0Bncx8EoPk6TMGFVDUbb_rbZ_S1H8"
+                            alt="Oratora Mascot"
+                            className="w-48 h-auto animate-bob"
+                        />
+                        <div className="mt-8 text-center bg-card-light dark:bg-card-dark p-4 rounded-xl shadow-sm">
+                            <p className="font-semibold text-primary">A tip from Oratora:</p>
+                            <p className="mt-2 text-sm text-text-secondary-light dark:text-text-secondary-dark">{onboardingTips[step]}</p>
+                        </div>
+                        <div className="mt-12 w-full">
+                           <ProgressBar currentStep={step} totalSteps={totalStepsOnboarding} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Panel: Step Content */}
+                <main className="lg:col-span-8 p-4 sm:p-8 md:p-12 flex flex-col justify-center min-h-screen">
+                    {/* Mobile Progress Bar */}
+                    <div className="lg:hidden w-full max-w-2xl mx-auto mb-12">
+                         <ProgressBar currentStep={step} totalSteps={totalStepsOnboarding} direction="horizontal" />
+                    </div>
+                    
+                    <div className="w-full max-w-4xl mx-auto">
+                        {step === 1 && <Step1ProfileSetup user={user} onBack={handleBack} onSubmit={handleProfileSubmit} onSkip={handleSkipFlow} initialName={onboardingData.name} initialGoals={onboardingData.speakingGoals} />}
+                        {step === 2 && <Step2ContextSelection onBack={handleBack} onSubmit={handleContextSubmit} onSkip={handleSkipFlow} />}
+                        {step === 3 && <Step3Baseline onBack={handleBack} onSubmit={handleRecordingSubmit} />}
+                    </div>
                 </main>
             </div>
         </div>

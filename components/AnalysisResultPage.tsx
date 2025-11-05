@@ -15,10 +15,11 @@ interface AnalysisResultPageProps {
 
 const sections = [
     { id: 'video-playback', label: 'Playback', icon: 'play_circle' },
+    { id: 'quick-stats', label: 'Stats', icon: 'query_stats', mobileOnly: true },
     { id: 'transcript', label: 'Transcript', icon: 'description' },
     { id: 'metrics', label: 'Metrics', icon: 'pie_chart' },
-    { id: 'voice-modulation', label: 'Voice Modulation', icon: 'graphic_eq' },
-    { id: 'ai-feedback', label: 'AI Feedback', icon: 'psychology' },
+    { id: 'voice-modulation', label: 'Voice', icon: 'graphic_eq' },
+    { id: 'ai-feedback', label: 'Feedback', icon: 'psychology' },
     { id: 'action-plan', label: 'Action Plan', icon: 'checklist' },
     { id: 'comparison', label: 'Comparison', icon: 'compare_arrows' },
     { id: 'next-steps', label: "What's Next?", icon: 'sports_score' },
@@ -426,6 +427,30 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
         allMetrics.push(report.metrics.video.eyeContact, report.metrics.video.bodyLanguage, report.metrics.video.gestures);
     }
 
+    const QuickStats = () => (
+        <div className="bg-card-light dark:bg-card-dark p-6 rounded-xl shadow-md border border-border-light dark:border-border-dark">
+            <h3 className="font-bold text-lg">Quick Stats</h3>
+            <ul className="mt-4 space-y-3 text-sm">
+                <li className="flex justify-between">
+                    <span className="text-text-muted-light dark:text-text-muted-dark">Overall Score</span>
+                    <span className="font-bold text-primary">{report.overallScore}%</span>
+                </li>
+                 <li className="flex justify-between">
+                    <span className="text-text-muted-light dark:text-text-muted-dark">Duration</span>
+                    <span className="font-bold">{formatTime(report.durationSeconds)}</span>
+                </li>
+                <li className="flex justify-between">
+                    <span className="text-text-muted-light dark:text-text-muted-dark">Pacing</span>
+                    <span className="font-bold">{report.metrics.pacing.score} WPM</span>
+                </li>
+                <li className="flex justify-between">
+                    <span className="text-text-muted-light dark:text-text-muted-dark">Filler Words</span>
+                    <span className="font-bold">{report.metrics.fluency.details?.match(/\d+/)?.[0] || 0}</span>
+                </li>
+            </ul>
+        </div>
+    );
+
     return (
         <div className="bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark min-h-screen">
             <div className="printable-area">
@@ -436,15 +461,16 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                 {showXpToast && sessionGains && <XPToast gains={sessionGains} onClose={() => setShowXpToast(false)} />}
                 
                 <header className="sticky top-0 z-40 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
-                    <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-4 border-b border-border-light dark:border-border-dark">
-                        <div className="flex justify-between items-center">
+                    <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-3 border-b border-border-light dark:border-border-dark">
+                        <div className="flex justify-between items-center gap-4">
                             <div className="flex-1 min-w-0">
-                                <h1 className="text-2xl font-bold truncate">{report.title}</h1>
-                                <p className="text-sm text-text-muted-light dark:text-text-muted-dark">{report.sessionDate}</p>
+                                <h1 className="text-xl md:text-2xl font-bold truncate">{report.title}</h1>
+                                <p className="text-xs md:text-sm text-text-muted-light dark:text-text-muted-dark">{report.sessionDate}</p>
                             </div>
                             <div className="flex items-center gap-2 sm:gap-4">
                                 <button onClick={handlePrint} className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors hidden sm:flex items-center gap-2 text-sm font-semibold">
-                                    <span className="material-symbols-outlined">download</span> Download Report
+                                    <span className="material-symbols-outlined !text-base">download</span>
+                                    <span className="hidden md:inline">Download Report</span>
                                 </button>
                                 <button onClick={onBackToDashboard} className="h-10 px-4 text-sm font-bold text-text-light dark:text-text-dark bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">Done</button>
                             </div>
@@ -454,8 +480,8 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
 
                 <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8">
                     {/* Mobile-only sticky navigation */}
-                    <div className="lg:hidden sticky top-20 z-30 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-border-light dark:border-border-dark -mx-4 sm:-mx-6 px-4 sm:px-6">
-                        <nav className="flex overflow-x-auto whitespace-nowrap py-2">
+                    <div className="lg:hidden sticky top-[65px] z-30 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-border-light dark:border-border-dark -mx-4 sm:-mx-6 px-4 sm:px-6">
+                        <nav className="flex overflow-x-auto whitespace-nowrap py-2 no-scrollbar">
                             {sections.map(section => (
                                 <a
                                     key={section.id}
@@ -464,7 +490,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                                         e.preventDefault();
                                         const el = document.getElementById(section.id);
                                         if (el) {
-                                            const y = el.getBoundingClientRect().top + window.pageYOffset - 136;
+                                            const y = el.getBoundingClientRect().top + window.pageYOffset - 120; // Adjusted for sticky header height
                                             window.scrollTo({ top: y, behavior: 'smooth' });
                                         }
                                     }}
@@ -483,24 +509,27 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
 
                     <div className="grid grid-cols-12 gap-8">
                         {/* Left Sidebar */}
-                        <aside className="hidden lg:block lg:col-span-2 py-6 lg:py-8">
+                        <aside className="hidden lg:block lg:col-span-2 py-8">
                             <nav className="sticky top-24">
                                 <ul className="space-y-2">
-                                    {sections.map(section => (
-                                        <li key={section.id}>
-                                            <a
-                                                href={`#${section.id}`}
-                                                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-semibold transition-colors ${
-                                                    activeSection === section.id
-                                                        ? 'bg-primary/10 text-primary'
-                                                        : 'text-text-muted-light dark:text-text-muted-dark hover:bg-slate-100 dark:hover:bg-slate-800'
-                                                }`}
-                                            >
-                                                <span className="material-symbols-outlined text-base">{section.icon}</span>
-                                                {section.label}
-                                            </a>
-                                        </li>
-                                    ))}
+                                    {sections.map(section => {
+                                        if (section.mobileOnly) return null;
+                                        return (
+                                            <li key={section.id}>
+                                                <a
+                                                    href={`#${section.id}`}
+                                                    className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-semibold transition-colors ${
+                                                        activeSection === section.id
+                                                            ? 'bg-primary/10 text-primary'
+                                                            : 'text-text-muted-light dark:text-text-muted-dark hover:bg-slate-100 dark:hover:bg-slate-800'
+                                                    }`}
+                                                >
+                                                    <span className="material-symbols-outlined text-base">{section.icon}</span>
+                                                    {section.label}
+                                                </a>
+                                            </li>
+                                        )
+                                    })}
                                 </ul>
                             </nav>
                         </aside>
@@ -509,7 +538,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                         <main className="col-span-12 lg:col-span-10 xl:col-span-7 py-6 lg:py-8">
                             <div className="space-y-12">
                                  {/* Playback Section */}
-                                <section id="video-playback" ref={el => sectionRefs.current[0] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
+                                <section id="video-playback" ref={el => sectionRefs.current[0] = el} className="scroll-mt-[120px] lg:scroll-mt-24">
                                     <div className="bg-card-light dark:bg-card-dark p-4 sm:p-6 rounded-xl shadow-md border border-border-light dark:border-border-dark">
                                         {mediaUrl ? (
                                             <>
@@ -542,12 +571,17 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                                     </div>
                                 </section>
                                 
+                                {/* Quick Stats for mobile */}
+                                <section id="quick-stats" ref={el => sectionRefs.current[1] = el} className="scroll-mt-[120px] xl:hidden">
+                                    <QuickStats />
+                                </section>
+                                
                                 {/* Transcript Section */}
-                                <section id="transcript" ref={el => sectionRefs.current[1] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
+                                <section id="transcript" ref={el => sectionRefs.current[2] = el} className="scroll-mt-[120px] lg:scroll-mt-24">
                                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                         <div>
-                                            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Transcript & Analysis</h2>
-                                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Click any part of the transcript to jump to that moment in the playback.</p>
+                                            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Transcript & Analysis</h2>
+                                            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Click any part of the transcript to jump to that moment.</p>
                                         </div>
                                         <div className="flex-shrink-0 flex flex-wrap justify-start sm:justify-end items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-full">
                                             {['All', 'Strengths', 'Weaknesses', 'Issues'].map(filter => (
@@ -572,8 +606,8 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                                 </section>
 
                                 {/* Metrics Section */}
-                                <section id="metrics" ref={el => sectionRefs.current[2] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
-                                     <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Key Metrics</h2>
+                                <section id="metrics" ref={el => sectionRefs.current[3] = el} className="scroll-mt-[120px] lg:scroll-mt-24">
+                                     <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6">Key Metrics</h2>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {allMetrics.map(metric => (
                                              <div key={metric.label} className={`p-4 rounded-lg border-l-4 ${ { good: 'border-green-500 bg-green-500/10', average: 'border-yellow-500 bg-yellow-500/10', poor: 'border-red-500 bg-red-500/10' }[metric.rating as string] || 'border-yellow-500 bg-yellow-500/10' }`}>
@@ -588,8 +622,8 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                                 </section>
 
                                 {/* Voice Modulation Section */}
-                                <section id="voice-modulation" ref={el => sectionRefs.current[3] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
-                                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Voice Modulation</h2>
+                                <section id="voice-modulation" ref={el => sectionRefs.current[4] = el} className="scroll-mt-[120px] lg:scroll-mt-24">
+                                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6">Voice Modulation</h2>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <VoiceModulationCard metric={report.metrics.intonation} title="Intonation" icon="graphic_eq" colorClass="text-purple-500" exercises={[{title: 'Pitch Rollercoaster', description: 'Read a passage with exaggerated pitch changes.'}, {title: 'Emotional Sentence', description: 'Say a neutral phrase with different emotions.'}]} />
                                         <VoiceModulationCard metric={report.metrics.volume} title="Volume" icon="volume_up" colorClass="text-blue-500" exercises={[{title: 'Projection Practice', description: 'Practice speaking from your diaphragm to fill a room.'}, {title: 'Volume Control', description: 'Speak at whisper, conversational, and loud levels.'}]} />
@@ -597,8 +631,8 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                                 </section>
 
                                 {/* Other sections remain the same */}
-                                <section id="ai-feedback" ref={el => sectionRefs.current[4] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
-                                     <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">AI Coach Feedback</h2>
+                                <section id="ai-feedback" ref={el => sectionRefs.current[5] = el} className="scroll-mt-[120px] lg:scroll-mt-24">
+                                     <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6">AI Coach Feedback</h2>
                                     <div className="space-y-6">
                                         <div className="bg-card-light dark:bg-card-dark p-6 rounded-xl shadow-md border border-border-light dark:border-border-dark">
                                             <h3 className="text-lg font-bold text-primary flex items-center gap-2"><span className="material-symbols-outlined">emoji_objects</span>Transformative Tip</h3>
@@ -632,8 +666,8 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                                     </div>
                                 </section>
                                 
-                                <section id="action-plan" ref={el => sectionRefs.current[5] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
-                                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Your 7-Day Action Plan</h2>
+                                <section id="action-plan" ref={el => sectionRefs.current[6] = el} className="scroll-mt-[120px] lg:scroll-mt-24">
+                                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6">Your 7-Day Action Plan</h2>
                                     <div className="space-y-2">
                                         {report.actionPlan.map(day => (
                                             <div key={day.day} className={`p-4 rounded-lg flex items-start gap-4 transition-all ${day.isToday ? 'bg-primary/10 border border-primary/20' : 'bg-slate-50 dark:bg-slate-800/50'}`}>
@@ -647,8 +681,8 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                                     </div>
                                 </section>
                                 
-                                 <section id="comparison" ref={el => sectionRefs.current[6] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
-                                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">How You Compare</h2>
+                                 <section id="comparison" ref={el => sectionRefs.current[7] = el} className="scroll-mt-[120px] lg:scroll-mt-24">
+                                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-6">How You Compare</h2>
                                     <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">See how this session compares to your previous performance and community averages.</p>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                                          <div className="bg-card-light dark:bg-card-dark p-6 rounded-xl shadow-md">
@@ -696,7 +730,7 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                                     </div>
                                 </section>
                                 
-                                <section id="next-steps" ref={el => sectionRefs.current[7] = el} className="scroll-mt-[136px] lg:scroll-mt-24">
+                                <section id="next-steps" ref={el => sectionRefs.current[8] = el} className="scroll-mt-[120px] lg:scroll-mt-24">
                                     <div className="bg-gradient-to-r from-primary to-teal-400 p-8 rounded-xl text-white text-center">
                                         <h2 className="text-3xl font-bold">Ready for the Next Step?</h2>
                                         <p className="mt-2 max-w-xl mx-auto">Keep the momentum going! Start a new analysis to build on what you've learned, or try a live practice session for real-time feedback.</p>
@@ -710,29 +744,9 @@ const AnalysisResultPage: React.FC<AnalysisResultPageProps> = ({ user, report, m
                         </main>
 
                          {/* Right Sidebar (Quick Stats) */}
-                        <aside className="hidden xl:block xl:col-span-3 py-6 lg:py-8">
+                        <aside className="hidden xl:block xl:col-span-3 py-8">
                             <div className="sticky top-24 space-y-6">
-                                <div className="bg-card-light dark:bg-card-dark p-6 rounded-xl shadow-md border border-border-light dark:border-border-dark">
-                                    <h3 className="font-bold text-lg">Quick Stats</h3>
-                                    <ul className="mt-4 space-y-3 text-sm">
-                                        <li className="flex justify-between">
-                                            <span className="text-text-muted-light dark:text-text-muted-dark">Overall Score</span>
-                                            <span className="font-bold text-primary">{report.overallScore}%</span>
-                                        </li>
-                                         <li className="flex justify-between">
-                                            <span className="text-text-muted-light dark:text-text-muted-dark">Duration</span>
-                                            <span className="font-bold">{formatTime(report.durationSeconds)}</span>
-                                        </li>
-                                        <li className="flex justify-between">
-                                            <span className="text-text-muted-light dark:text-text-muted-dark">Pacing</span>
-                                            <span className="font-bold">{report.metrics.pacing.score} WPM</span>
-                                        </li>
-                                        <li className="flex justify-between">
-                                            <span className="text-text-muted-light dark:text-text-muted-dark">Filler Words</span>
-                                            <span className="font-bold">{report.metrics.fluency.details?.match(/\d+/)?.[0] || 0}</span>
-                                        </li>
-                                    </ul>
-                                </div>
+                                <QuickStats />
                                 <div className="bg-card-light dark:bg-card-dark p-6 rounded-xl shadow-md border border-border-light dark:border-border-dark">
                                     <h3 className="font-bold text-lg">Next Goal</h3>
                                      <div className="mt-4 text-center">

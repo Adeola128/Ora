@@ -489,7 +489,7 @@ const App: React.FC = () => {
                 case 'progress': return <ProgressPage user={user} history={analysisHistory} userGoals={userGoals} onNavigateToGoals={() => navigateTo('goals')} onViewReport={(report) => { setAnalysisResult(report); setMediaForAnalysis(null); navigateTo('analysisResult'); }} onNavigateToNewAnalysis={() => navigateTo('contextSelection')} />;
                 case 'resources': return <ResourcesPage onNavigateToResource={(id) => { setSelectedResource(id); navigateTo('resourceArticle'); }} />;
                 case 'resourceArticle': return <ResourceArticlePage articleId={selectedResource} onBack={() => navigateTo('resources')} />;
-                case 'profile': return <ProfilePage user={user} onUpdateUser={handleUpdateUser} />;
+                case 'profile': return <ProfilePage user={user} history={analysisHistory} onUpdateUser={handleUpdateUser} />;
                 case 'settings': return <SettingsPage user={user} history={analysisHistory} setToast={setToast} />;
                 case 'billing': return <BillingPage user={user} subscription={userSubscription} onSubscriptionUpdate={handleSubscriptionUpdate} onNavigateToPaymentSuccess={(ref, plan, amt) => { setPaymentInfo({ reference: ref, plan, amount: amt }); navigateTo('paymentSuccess'); }} onNavigateToPaymentFailed={() => navigateTo('paymentFailed')} onBackToDashboard={() => navigateTo('dashboard')} setToast={setToast} />;
                 case 'referral': return <ReferralPage user={user} setToast={setToast} onUpdateUser={handleUpdateUser} />;

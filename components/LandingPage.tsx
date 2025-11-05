@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface LandingPageProps {
     onNavigateToLogin: () => void;
@@ -11,6 +11,24 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigateToSignUp, onNavigateToTermsOfService, onNavigateToPrivacyPolicy, onNavigateToSecurity, onNavigateToContact, onNavigateToCareer }) => {
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+        e.preventDefault();
+        const targetElement = document.querySelector(targetId);
+        if (targetElement) {
+            const headerOffset = 72; // Account for sticky header
+            const elementPosition = targetElement.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: "smooth"
+            });
+        }
+        setIsMobileMenuOpen(false); // Close mobile menu after click
+    };
     
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -46,6 +64,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
         };
         window.addEventListener('scroll', handleScroll);
         
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsMobileMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        
         // Initial check in case page is already scrolled
         handleScroll();
 
@@ -56,6 +81,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
                 }
             });
             window.removeEventListener('scroll', handleScroll);
+            document.removeEventListener('mousedown', handleClickOutside);
         };
     }, []);
 
@@ -78,15 +104,37 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
                         </svg>
                         <span className="font-heading text-2xl font-bold text-text-primary-light dark:text-text-primary-dark">Oratora</span>
                     </a>
+                    
+                    {/* Desktop Navigation */}
                     <div className="hidden items-center gap-8 md:flex">
-                        <a className="text-sm font-medium text-text-primary/80 dark:text-white/70 hover:text-primary dark:hover:text-primary transition-colors" href="#features">Product</a>
-                        <a className="text-sm font-medium text-text-primary/80 dark:text-white/70 hover:text-primary dark:hover:text-primary transition-colors" href="#about">How it works</a>
-                        <a className="text-sm font-medium text-text-primary/80 dark:text-white/70 hover:text-primary dark:hover:text-primary transition-colors" href="#pricing">Pricing</a>
-                        <a className="text-sm font-medium text-text-primary/80 dark:text-white/70 hover:text-primary dark:hover:text-primary transition-colors" href="#faq">Resources</a>
+                        <a onClick={(e) => handleNavClick(e, '#features')} href="#features" className="cursor-pointer text-sm font-medium text-text-primary/80 dark:text-white/70 hover:text-primary dark:hover:text-primary transition-colors">Product</a>
+                        <a onClick={(e) => handleNavClick(e, '#about')} href="#about" className="cursor-pointer text-sm font-medium text-text-primary/80 dark:text-white/70 hover:text-primary dark:hover:text-primary transition-colors">How it works</a>
+                        <a onClick={(e) => handleNavClick(e, '#pricing')} href="#pricing" className="cursor-pointer text-sm font-medium text-text-primary/80 dark:text-white/70 hover:text-primary dark:hover:text-primary transition-colors">Pricing</a>
+                        <a onClick={(e) => handleNavClick(e, '#faq')} href="#faq" className="cursor-pointer text-sm font-medium text-text-primary/80 dark:text-white/70 hover:text-primary dark:hover:text-primary transition-colors">Resources</a>
+                        <button onClick={onNavigateToSignUp} className="flex h-10 transform cursor-pointer items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-primary to-playful_green px-6 text-sm font-bold text-white shadow-lg transition-transform duration-200 ease-in-out hover:scale-105">
+                            <span className="truncate">Get Started</span>
+                        </button>
                     </div>
-                    <button onClick={onNavigateToSignUp} className="flex h-10 transform cursor-pointer items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-primary to-playful_green px-6 text-sm font-bold text-white shadow-lg transition-transform duration-200 ease-in-out hover:scale-105">
-                        <span className="truncate">Get Started</span>
-                    </button>
+
+                    {/* Mobile Navigation */}
+                    <div className="md:hidden" ref={menuRef}>
+                        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Open menu">
+                            <span className="material-symbols-outlined">menu</span>
+                        </button>
+                        {isMobileMenuOpen && (
+                            <div className="absolute top-full right-4 mt-2 w-64 origin-top-right bg-card-light dark:bg-card-dark rounded-xl shadow-lg border border-border-light dark:border-border-dark animate-fade-in-up-small z-50 p-2">
+                                <nav className="flex flex-col gap-1">
+                                    <a onClick={(e) => handleNavClick(e, '#features')} href="#features" className="px-4 py-3 rounded-lg text-base font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">Product</a>
+                                    <a onClick={(e) => handleNavClick(e, '#about')} href="#about" className="px-4 py-3 rounded-lg text-base font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">How it works</a>
+                                    <a onClick={(e) => handleNavClick(e, '#pricing')} href="#pricing" className="px-4 py-3 rounded-lg text-base font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">Pricing</a>
+                                    <a onClick={(e) => handleNavClick(e, '#faq')} href="#faq" className="px-4 py-3 rounded-lg text-base font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer">Resources</a>
+                                    <div className="border-t border-border-light dark:border-border-dark my-2"></div>
+                                    <button onClick={() => { onNavigateToSignUp(); setIsMobileMenuOpen(false); }} className="w-full text-center px-4 py-3 rounded-lg text-base font-semibold bg-primary text-white hover:bg-primary/90">Get Started</button>
+                                    <button onClick={() => { onNavigateToLogin(); setIsMobileMenuOpen(false); }} className="w-full text-center px-4 py-3 rounded-lg text-base font-semibold hover:bg-slate-100 dark:hover:bg-slate-800">Sign In</button>
+                                </nav>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </header>
             <main>
