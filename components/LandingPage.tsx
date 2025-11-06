@@ -10,8 +10,39 @@ interface LandingPageProps {
     onNavigateToCareer: () => void;
 }
 
+const PromoBanner: React.FC<{ onClaim: () => void }> = ({ onClaim }) => {
+    return (
+        <div className="mx-auto max-w-6xl px-4 py-8">
+            <div className="relative rounded-xl bg-gradient-to-r from-teal-400 via-primary to-playful_green p-8 text-white shadow-2xl shadow-primary/30 overflow-hidden">
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full"></div>
+                <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-white/10 rounded-full"></div>
+                
+                <div className="relative z-10 text-center">
+                    <h3 className="font-display text-3xl font-bold">Limited Time Offer!</h3>
+                    <p className="mt-2 text-lg font-semibold">Get Your First Month of Oratora Pro, Absolutely Free!</p>
+                    <p className="mt-4 text-sm max-w-2xl mx-auto">Unlock unlimited analyses, video feedback, and live practice sessions to supercharge your speaking skills.</p>
+                    
+                    <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <p className="text-sm">Use code:</p>
+                        <div className="px-4 py-2 bg-white/20 rounded-lg border border-white/30 font-mono font-bold text-lg tracking-widest">
+                            KWASULOCAL
+                        </div>
+                    </div>
+                    
+                    <button onClick={onClaim} className="mt-8 flex h-14 transform cursor-pointer items-center justify-center overflow-hidden rounded-full bg-white px-10 font-bold text-primary shadow-lg transition-transform duration-200 ease-in-out hover:scale-105 mx-auto">
+                        <span className="truncate">Claim My Free Month Now</span>
+                    </button>
+                    
+                    <p className="mt-4 text-xs opacity-80">Offer valid until November 20th. New users only.</p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigateToSignUp, onNavigateToTermsOfService, onNavigateToPrivacyPolicy, onNavigateToSecurity, onNavigateToContact, onNavigateToCareer }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isPromoActive, setIsPromoActive] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
     const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
@@ -31,6 +62,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
     };
     
     useEffect(() => {
+        const today = new Date();
+        // Promo is active in November (month 10) until the 20th.
+        if (today.getMonth() === 10 && today.getDate() <= 20) {
+            setIsPromoActive(true);
+        }
+
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
@@ -88,6 +125,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
     const handleChoosePlan = () => {
         // In the landing page, we direct users to sign up first.
         // Payment will be handled inside the app once they are logged in.
+        onNavigateToSignUp();
+    };
+    
+    const handleClaimOffer = () => {
+        localStorage.setItem('oratora_promo_code', 'kwasulocal');
         onNavigateToSignUp();
     };
 
@@ -170,6 +212,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
                         </div>
                     </div>
                 </section>
+                
+                {isPromoActive && <PromoBanner onClaim={handleClaimOffer} />}
+
                 {/* Feature Section */}
                 <section id="features" className="py-16 sm:py-24 animate-on-scroll">
                     <div className="mx-auto max-w-6xl px-4">

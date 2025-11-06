@@ -1,32 +1,133 @@
 <!DOCTYPE html>
-<html class="light" lang="en">
+<html class="light" lang="en" dir="ltr">
 <head>
     <meta charset="utf-8" />
-    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
     
-    <!-- PWA -->
+    <!-- PWA & Mobile -->
     <meta name="theme-color" content="#06f9e0"/>
     <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Oratora" />
 
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M16 28C22.6274 28 28 22.6274 28 16C28 9.37258 22.6274 4 16 4' stroke='%2306f9e0' stroke-width='4' stroke-linecap='round' fill='none'/><path d='M16 24C19.9298 24 23.141 21.412 24 18' stroke='%2306f9e0' stroke-width='3' stroke-linecap='round' fill='none'/><path d='M16 20C17.5752 20 18.9664 19.1411 19.6085 18' stroke='%2306f9e0' stroke-width='2.5' stroke-linecap='round' fill='none'/></svg>" />
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M16 28C22.6274 28 28 22.6274 28 16C28 9.37258 22.6274 4 16 4' stroke='%2306f9e0' stroke-width='4' stroke-linecap='round' fill='none'/><path d='M16 24C19.9298 24 23.141 21.412 24 18' stroke='%2306f9e0' stroke-width='3' stroke-linecap='round' fill='none'/><path d='M16 20C17.5752 20 18.9664 19.1411 19.6085 18' stroke='%2306f9e0' stroke-width='2.5' stroke-linecap='round' fill='none'/></svg>" />
+    <link rel="mask-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M16 28C22.6274 28 28 22.6274 28 16C28 9.37258 22.6274 4 16 4' stroke='currentColor' stroke-width='4' stroke-linecap='round' fill='none'/><path d='M16 24C19.9298 24 23.141 21.412 24 18' stroke='currentColor' stroke-width='3' stroke-linecap='round' fill='none'/><path d='M16 20C17.5752 20 18.9664 19.1411 19.6085 18' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' fill='none'/></svg>" color="#06f9e0" />
     <title>Oratora - Speak Better. Sound Confident.</title>
 
     <!-- SEO & Link Previews -->
     <meta name="description" content="A playful, AI-powered coach that helps you practice, polish, and deliver speeches with confidence and impact." />
+    <meta name="keywords" content="public speaking coach, AI speech coach, presentation skills, public speaking practice, speech analysis, Oratora, communication skills, presentation practice, voice analysis, speech anxiety, virtual presentation, communication training, voice coach app" />
+    <meta name="author" content="Oratora Inc." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://oratora.com.ng/" />
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://oratora.ai/" />
+    <meta property="og:url" content="https://oratora.com.ng/" />
     <meta property="og:title" content="Oratora - Speak Better. Sound Confident." />
+    <meta property="og:site_name" content="Oratora" />
     <meta property="og:description" content="A playful, AI-powered coach that helps you practice, polish, and deliver speeches with confidence and impact." />
     <meta property="og:image" content="https://lh3.googleusercontent.com/aida-public/AB6AXuA0nJAckBRNmJFNqlAqv5tNTcBi47GvgkXkJl5l6N2XemPTQRA8IhNddcxF2YrCLydSwyYYVkNO-3Txl0jl_JmQolR7tzgjihkHX5RHLe5t40xLwZp-S-3tois2kk5ZCEI0paVskx5CAPcEkH5yNZChvm_XSpsQbqtxoxOozq95vS_Ipz21u07aUKAWgjFrbOiXWqegc_CIcY_l3AHF0iDMCqYyGycSymt0n6JXLp85Kt3NECm0mcarUCtoxqkIllble7w1tlKDwWo" />
+    <meta property="og:locale" content="en_US" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://oratora.ai/" />
+    <meta property="twitter:url" content="https://oratora.com.ng/" />
     <meta property="twitter:title" content="Oratora - Speak Better. Sound Confident." />
     <meta property="twitter:description" content="A playful, AI-powered coach that helps you practice, polish, and deliver speeches with confidence and impact." />
     <meta property="twitter:image" content="https://lh3.googleusercontent.com/aida-public/AB6AXuA0nJAckBRNmJFNqlAqv5tNTcBi47GvgkXkJl5l6N2XemPTQRA8IhNddcxF2YrCLydSwyYYVkNO-3Txl0jl_JmQolR7tzgjihkHX5RHLe5t40xLwZp-S-3tois2kk5ZCEI0paVskx5CAPcEkH5yNZChvm_XSpsQbqtxoxOozq95vS_Ipz21u07aUKAWgjFrbOiXWqegc_CIcY_l3AHF0iDMCqYyGycSymt0n6JXLp85Kt3NECm0mcarUCtoxqkIllble7w1tlKDwWo" />
+    
+    <!-- Structured Data for Rich Snippets & AI -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "url": "https://oratora.com.ng/",
+          "name": "Oratora",
+          "image": "https://lh3.googleusercontent.com/aida-public/AB6AXuA0nJAckBRNmJFNqlAqv5tNTcBi47GvgkXkJl5l6N2XemPTQRA8IhNddcxF2YrCLydSwyYYVkNO-3Txl0jl_JmQolR7tzgjihkHX5RHLe5t40xLwZp-S-3tois2kk5ZCEI0paVskx5CAPcEkH5yNZChvm_XSpsQbqtxoxOozq95vS_Ipz21u07aUKAWgjFrbOiXWqegc_CIcY_l3AHF0iDMCqYyGycSymt0n6JXLp85Kt3NECm0mcarUCtoxqkIllble7w1tlKDwWo",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://oratora.com.ng/search?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "Oratora",
+          "operatingSystem": "WEB",
+          "applicationCategory": "EducationApplication",
+          "url": "https://oratora.com.ng/",
+          "description": "A playful, AI-powered coach that helps you practice, polish, and deliver speeches with confidence and impact. Get real-time feedback on pacing, filler words, and more.",
+          "featureList": [
+            "AI-Powered Speech Analysis",
+            "Real-time Feedback",
+            "Filler Word Detection",
+            "Pacing and Intonation Analysis",
+            "Video and Audio Uploads",
+            "Live Practice Sessions",
+            "Progress Tracking & Gamification"
+          ],
+          "screenshot": "https://lh3.googleusercontent.com/aida-public/AB6AXuA0nJAckBRNmJFNqlAqv5tNTcBi47GvgkXkJl5l6N2XemPTQRA8IhNddcxF2YrCLydSwyYYVkNO-3Txl0jl_JmQolR7tzgjihkHX5RHLe5t40xLwZp-S-3tois2kk5ZCEI0paVskx5CAPcEkH5yNZChvm_XSpsQbqtxoxOozq95vS_Ipz21u07aUKAWgjFrbOiXWqegc_CIcY_l3AHF0iDMCqYyGycSymt0n6JXLp85Kt3NECm0mcarUCtoxqkIllble7w1tlKDwWo",
+          "offers": [
+            { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "NGN" },
+            { "@type": "Offer", "name": "Pro", "price": "2500", "priceCurrency": "NGN" },
+            { "@type": "Offer", "name": "Premium", "price": "3500", "priceCurrency": "NGN" }
+          ],
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "reviewCount": "523"
+          },
+          "author": { "@type": "Organization", "name": "Oratora Inc.", "logo": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M16 28C22.6274 28 28 22.6274 28 16C28 9.37258 22.6274 4 16 4' stroke='%2306f9e0' stroke-width='4' stroke-linecap='round' fill='none'/><path d='M16 24C19.9298 24 23.141 21.412 24 18' stroke='%2306f9e0' stroke-width='3' stroke-linecap='round' fill='none'/><path d='M16 20C17.5752 20 18.9664 19.1411 19.6085 18' stroke='%2306f9e0' stroke-width='2.5' stroke-linecap='round' fill='none'/></svg>" }
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "How does the AI analysis work?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Oratora uses advanced machine learning models trained on vast datasets of speeches. It analyzes your audio for vocal patterns (pacing, tone, fillers) and your video for visual cues (gestures, posture, eye contact) to provide comprehensive, data-driven feedback."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is my data private and secure?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Absolutely. Your privacy is our top priority. All uploaded speeches are encrypted and processed securely. We never share your data or use it for any purpose other than providing you with personalized feedback."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "What kind of equipment do I need?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "All you need is a computer or smartphone with a modern web browser, a microphone, and a webcam (for video analysis). No special software or hardware is required to get started."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I cancel my subscription anytime?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, you can cancel your subscription at any time from your account settings. You will retain access to features until the end of your current billing period, and you won't be charged again."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
 
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>

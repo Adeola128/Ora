@@ -36,7 +36,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 /* 
 ================================================================================
-  SUPABASE DATABASE SETUP SCRIPT (v4 - Notification Settings)
+  SUPABASE DATABASE SETUP SCRIPT (v5 - Promo Code Logic)
   This script can be run multiple times safely.
   Execute the following SQL queries in your Supabase SQL Editor.
 ================================================================================
@@ -99,7 +99,15 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
   profile_inserted BOOLEAN := false;
+  v_trial_interval TEXT := '21 days'; -- Default trial period
+  v_current_date DATE := CURRENT_DATE;
+  v_promo_end_date DATE := make_date(extract(year from v_current_date)::int, 11, 20); -- Nov 20th of current year
 BEGIN
+  -- Check for promo code 'kwasulocal' and if the current date is on or before the end date
+  IF new.raw_user_meta_data->>'promo_code' = 'kwasulocal' AND v_current_date <= v_promo_end_date THEN
+    v_trial_interval := '1 month';
+  END IF;
+
   -- Loop to handle potential referral_code collisions
   FOR i IN 1..5 LOOP
     BEGIN
@@ -119,14 +127,14 @@ BEGIN
     END;
   END LOOP;
 
-  -- If profile was inserted successfully, create a 21-day trial subscription and notification settings
+  -- If profile was inserted successfully, create a trial subscription and notification settings
   IF profile_inserted THEN
     INSERT INTO public.subscriptions (id, plan, status, trial_ends_at)
     VALUES (
       new.id,
       'pro', -- Start them on a trial of the Pro plan
       'trialing',
-      NOW() + interval '21 days'
+      NOW() + v_trial_interval::interval -- Use the determined interval
     );
     -- Insert default notification settings
     INSERT INTO public.notification_settings (user_id) VALUES (new.id);

@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import AuthLayout from './AuthLayout';
@@ -41,15 +42,30 @@ const SignUpPage: React.FC<{
         setError('');
 
         const refCode = localStorage.getItem('oratora_ref_code');
+        const promoCode = localStorage.getItem('oratora_promo_code');
+
+        const signUpOptions: { data: { [key: string]: any } } = {
+            data: {
+                full_name: name,
+            }
+        };
+
+        // Check for active promo code
+        if (promoCode === 'kwasulocal') {
+            const today = new Date();
+            // Promo ends Nov 20th (month 10)
+            if (today.getMonth() === 10 && today.getDate() <= 20) {
+                 signUpOptions.data.promo_code = promoCode;
+            } else {
+                // If code is expired on the client, remove it so it's not used again
+                localStorage.removeItem('oratora_promo_code');
+            }
+        }
 
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
-            options: {
-                data: {
-                    full_name: name,
-                }
-            }
+            options: signUpOptions
         });
         
         if (error) {
@@ -65,8 +81,13 @@ const SignUpPage: React.FC<{
                     // Log the error but don't block the user's sign-up flow
                     console.error('Referral processing error:', rpcError);
                 }
-                // Clear the referral code from storage regardless of success
+                // Clear the referral code from storage after attempting to process
                 localStorage.removeItem('oratora_ref_code');
+            }
+            
+            // Clear the promo code after successful sign up attempt
+            if (promoCode) {
+                localStorage.removeItem('oratora_promo_code');
             }
             
             // If email confirmation is required, show the confirmation message
