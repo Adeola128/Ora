@@ -11,29 +11,101 @@ interface LandingPageProps {
 }
 
 const PromoBanner: React.FC<{ onClaim: () => void }> = ({ onClaim }) => {
+    const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+    const [copied, setCopied] = useState(false);
+
+    useEffect(() => {
+        const calculateTimeLeft = () => {
+            // Countdown to Nov 21st 00:00:00 of the current year
+            const difference = +new Date(new Date().getFullYear(), 10, 21) - +new Date();
+            let newTimeLeft = { days: 0, hours: 0, minutes: 0, seconds: 0 };
+
+            if (difference > 0) {
+                newTimeLeft = {
+                    days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+                    hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+                    minutes: Math.floor((difference / 1000 / 60) % 60),
+                    seconds: Math.floor((difference / 1000) % 60)
+                };
+            }
+            return newTimeLeft;
+        };
+
+        const timer = setInterval(() => {
+            setTimeLeft(calculateTimeLeft());
+        }, 1000);
+
+        // Set initial time
+        setTimeLeft(calculateTimeLeft());
+
+        return () => clearInterval(timer);
+    }, []);
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText('KWASULOCAL').then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    };
+    
     return (
-        <div className="mx-auto max-w-6xl px-4 py-8">
-            <div className="relative rounded-xl bg-gradient-to-r from-teal-400 via-primary to-playful_green p-8 text-white shadow-2xl shadow-primary/30 overflow-hidden">
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full"></div>
-                <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-white/10 rounded-full"></div>
-                
-                <div className="relative z-10 text-center">
-                    <h3 className="font-display text-3xl font-bold">Limited Time Offer!</h3>
-                    <p className="mt-2 text-lg font-semibold">Get Your First Month of Oratora Pro, Absolutely Free!</p>
-                    <p className="mt-4 text-sm max-w-2xl mx-auto">Unlock unlimited analyses, video feedback, and live practice sessions to supercharge your speaking skills.</p>
-                    
-                    <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
-                        <p className="text-sm">Use code:</p>
-                        <div className="px-4 py-2 bg-white/20 rounded-lg border border-white/30 font-mono font-bold text-lg tracking-widest">
-                            KWASULOCAL
+        <div className="relative py-16 px-4">
+            <div className="relative w-full max-w-4xl mx-auto rounded-xl bg-white dark:bg-background-dark/50 p-6 sm:p-10 md:p-12 border border-gray-200 dark:border-gray-800 shadow-lg">
+                <div className="absolute -top-10 -left-12 hidden lg:block">
+                    <img alt="A playful, abstract character with a leaf shape, smiling." className="h-40 w-40" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAByalocyH2JZbOd3BeaC0OWiHI5j2iz9W2JCGKcNAzYf9dum8WFJrKeg59ng6mVXqjrOAt_SSuJfNGFCCui1NeeuKt48AOfOD-6TeXhenilXJ_tQ1gPecxls9lKJgsgro_2Hd3nMBzG_BV32ebueVFsj8BQ-tpflSYt1UWq_y3N8kIRNVBnS14b6hThe-wyo5v97P-omi9Xh7wNXPPxWzr1ICjViIRLZOMXehAsV_JMaAsg2YVZDbxXp30hbrpdy8WhBL0XctWAI8"/>
+                </div>
+                <div className="absolute -bottom-12 -right-12 hidden lg:block">
+                    <img alt="A playful, abstract character shaped like a bean, looking excited." className="h-44 w-44" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmCtyiLgyPbOJJ1WBTESCRzkHPQmAvzrkRz-v5F5jdwVsgUolRpEXWsJq9I089iWZSeC-NJb6zz7Vrdv1JjlIE4NFLqDMpYgBsPXLt3vA5CZ-aqdOp-lLxy65yEm16Bv78RYwxsa6yFdst2A0rm_S0VJ0Mk1DPBF-z_3TsYL58C8jKSJ1HPTPZTOdQ7Omde-zRKfwVTL9k1BZD8DtkRm-auFMKK9eYIYuyid-ZmshUlcrn8r464g-7o0gq_rICuNDYgNe-oKz8gcQ"/>
+                </div>
+                <div className="relative flex flex-col items-center text-center">
+                    <div className="flex flex-col w-full max-w-lg items-center">
+                        <h3 className="text-[#111813] dark:text-white tracking-light text-2xl font-bold leading-tight px-4 pb-2 pt-5">Limited Time Offer!</h3>
+                        <div className="flex flex-wrap justify-center gap-3 p-4 w-full">
+                            <div className="flex flex-col gap-3">
+                                <p className="text-[#111813] dark:text-white text-4xl font-black leading-tight tracking-[-0.033em]">Get Your First Month of Oratora Pro, Absolutely Free!</p>
+                            </div>
                         </div>
+                        <div className="my-6 flex justify-center gap-2 sm:gap-4 text-center">
+                            <div className="flex flex-col items-center justify-center rounded-lg bg-background-light dark:bg-background-dark/50 p-3 sm:p-4 min-w-[70px] sm:min-w-[80px]">
+                                <span className="text-3xl sm:text-4xl font-black text-[#111813] dark:text-white">{String(timeLeft.days).padStart(2, '0')}</span>
+                                <span className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Days</span>
+                            </div>
+                            <div className="flex flex-col items-center justify-center rounded-lg bg-background-light dark:bg-background-dark/50 p-3 sm:p-4 min-w-[70px] sm:min-w-[80px]">
+                                <span className="text-3xl sm:text-4xl font-black text-[#111813] dark:text-white">{String(timeLeft.hours).padStart(2, '0')}</span>
+                                <span className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Hours</span>
+                            </div>
+                            <div className="flex flex-col items-center justify-center rounded-lg bg-background-light dark:bg-background-dark/50 p-3 sm:p-4 min-w-[70px] sm:min-w-[80px]">
+                                <span className="text-3xl sm:text-4xl font-black text-[#111813] dark:text-white">{String(timeLeft.minutes).padStart(2, '0')}</span>
+                                <span className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Mins</span>
+                            </div>
+                            <div className="flex flex-col items-center justify-center rounded-lg bg-background-light dark:bg-background-dark/50 p-3 sm:p-4 min-w-[70px] sm:min-w-[80px]">
+                                <span className="text-3xl sm:text-4xl font-black text-primary">{String(timeLeft.seconds).padStart(2, '0')}</span>
+                                <span className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400">Secs</span>
+                            </div>
+                        </div>
+                        <p className="text-[#608a6b] dark:text-gray-400 text-base font-normal leading-normal px-4">Unlock unlimited analyses, video feedback, and live practice sessions to supercharge your speaking skills.</p>
+                        <div className="w-full max-w-xs my-6">
+                            <div className="flex items-center justify-between gap-4 bg-background-light dark:bg-background-dark/50 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg px-4 min-h-14">
+                                <div className="flex items-center gap-4">
+                                    <div className="text-[#111813] dark:text-white flex items-center justify-center rounded-lg bg-primary/20 shrink-0 size-10">
+                                        <span className="material-symbols-outlined text-lg">sell</span>
+                                    </div>
+                                    <p className="text-[#111813] dark:text-white text-base font-bold leading-normal flex-1 truncate tracking-wider">KWASULOCAL</p>
+                                </div>
+                                <div className="shrink-0">
+                                    <button onClick={handleCopy} className="text-[#111813] dark:text-white flex size-7 items-center justify-center hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors">
+                                        <span className="material-symbols-outlined text-xl">{copied ? 'check' : 'content_copy'}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex px-4 py-3 justify-center w-full">
+                            <button onClick={onClaim} className="flex min-w-[84px] w-full max-w-sm cursor-pointer items-center justify-center overflow-hidden rounded-full h-12 px-5 bg-gradient-to-r from-primary to-[#8bff9c] text-[#111813] text-base font-bold leading-normal tracking-[0.015em] hover:brightness-110 transition-all duration-300 shadow-lg shadow-primary/30">
+                                <span className="truncate">Claim My Free Month Now</span>
+                            </button>
+                        </div>
+                        <p className="text-[#608a6b] dark:text-gray-500 text-sm font-normal leading-normal pb-3 pt-1 px-4 text-center">Offer valid until November 20th. New users only.</p>
                     </div>
-                    
-                    <button onClick={onClaim} className="mt-8 flex h-14 transform cursor-pointer items-center justify-center overflow-hidden rounded-full bg-white px-10 font-bold text-primary shadow-lg transition-transform duration-200 ease-in-out hover:scale-105 mx-auto">
-                        <span className="truncate">Claim My Free Month Now</span>
-                    </button>
-                    
-                    <p className="mt-4 text-xs opacity-80">Offer valid until November 20th. New users only.</p>
                 </div>
             </div>
         </div>
@@ -129,7 +201,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToLogin, onNavigate
     };
     
     const handleClaimOffer = () => {
-        localStorage.setItem('oratora_promo_code', 'kwasulocal');
+        localStorage.setItem('oratora_promo_code', 'KWASULOCAL');
         onNavigateToSignUp();
     };
 
