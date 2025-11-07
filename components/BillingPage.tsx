@@ -107,7 +107,7 @@ const BillingPage: React.FC<BillingPageProps> = ({ user, subscription, onSubscri
             return;
         }
 
-        if (!(window as any).PaystackPop) {
+        if (!(window as any).PaystackPop || !process.env.VITE_PAYSTACK_PUBLIC_KEY) {
             setToast({ message: "Payment service is currently unavailable.", type: 'error' });
             return;
         }
@@ -116,7 +116,7 @@ const BillingPage: React.FC<BillingPageProps> = ({ user, subscription, onSubscri
         let paymentHandled = false;
 
         const handler = (window as any).PaystackPop.setup({
-            key: 'pk_live_07ce115cd9e5eb06a687719f2768d470b313811d', // Live Key
+            key: process.env.VITE_PAYSTACK_PUBLIC_KEY,
             email: user.email,
             amount: 50 * 100, // NGN 50 verification charge
             currency: 'NGN',
@@ -149,7 +149,7 @@ const BillingPage: React.FC<BillingPageProps> = ({ user, subscription, onSubscri
             return;
         }
 
-        if (!(window as any).PaystackPop) {
+        if (!(window as any).PaystackPop || !process.env.VITE_PAYSTACK_PUBLIC_KEY) {
             setToast({ message: "Payment service is currently unavailable. Please try again later.", type: 'error' });
             return;
         }
@@ -158,7 +158,7 @@ const BillingPage: React.FC<BillingPageProps> = ({ user, subscription, onSubscri
         let paymentHandled = false;
 
         const handler = (window as any).PaystackPop.setup({
-            key: 'pk_live_07ce115cd9e5eb06a687719f2768d470b313811d', // Live Key
+            key: process.env.VITE_PAYSTACK_PUBLIC_KEY,
             email: user.email,
             amount: price * 100, // Amount in kobo
             currency: 'NGN',

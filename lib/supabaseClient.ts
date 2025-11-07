@@ -28,8 +28,8 @@ export const toSnakeCase = (obj: any): any => transformKeys(obj, toSnake);
 
 
 // --- Supabase Configuration ---
-const supabaseUrl = 'https://edouqwauhyuzxrharbpv.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkb3Vxd2F1aHl1enhyaGFyYnB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE1MTY2NzEsImV4cCI6MjA3NzA5MjY3MX0.gCqPmHuRs325RJvjlHoKq6CliysLhyFsvD669_e-JtM';
+const supabaseUrl = process.env.VITE_SUPABASE_URL!;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -301,14 +301,16 @@ CREATE INDEX IF NOT EXISTS analysis_reports_user_id_idx ON public.analysis_repor
  */
 const initializeApiClients = () => {
     // --- Gemini AI Configuration ---
-    const geminiApiKey = process.env.API_KEY;
+    // The user can provide multiple keys in a comma-separated string for load balancing.
+    const geminiApiKeys = (process.env.API_KEY || '').split(',').filter(k => k.trim());
+    const isGeminiConfigured = geminiApiKeys.length > 0;
     
-    // Correctly determine if Gemini is configured by checking for the API key.
-    const isGeminiConfigured = !!geminiApiKey;
-    
-    // Initialize Gemini AI client. If the key is missing, the isGeminiConfigured
-    // flag will prevent the app from making API calls, showing a setup message instead.
-    const ai = new GoogleGenAI({ apiKey: geminiApiKey || 'placeholder-api-key' });
+    // Select one key at random on initialization.
+    const selectedApiKey = isGeminiConfigured 
+        ? geminiApiKeys[Math.floor(Math.random() * geminiApiKeys.length)].trim()
+        : 'placeholder-api-key';
+
+    const ai = new GoogleGenAI({ apiKey: selectedApiKey });
 
     return {
         ai,
